@@ -10,10 +10,12 @@ function Dashboard() {
     let [habits, setHabits] = useState<Habit[]>([])
     let [isModalOpen, setIsModalOpen] = useState(false);
 
-    const handleAddHabit = (newHabit: Habit) {
+    const handleAddHabit = (newHabit: Habit) => {
         setHabits((prev) => [...prev, newHabit])
     }
-    
+
+    console.log(habits)
+
         const DATE_OPTIONS = {
             weekday: 'long',
             month: 'short',
@@ -42,6 +44,7 @@ function Dashboard() {
                     <HabitForm
                         isOpen={isModalOpen}
                         onClose={() => setIsModalOpen(false)}
+                        onAddHabit={handleAddHabit}
                     />
                 ) : null)}
             </div>
