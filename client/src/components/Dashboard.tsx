@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import type { Habit } from "../types";
-
+import HabitForm from "./HabitForm";
 function Dashboard() {
 
     let [dailyProgress, setDailyProgress] = useState(0);
@@ -8,7 +8,12 @@ function Dashboard() {
     let [weeklyGoal, setWeeklyGoal] = useState(0);
 
     let [habits, setHabits] = useState<Habit[]>([])
+    let [isModalOpen, setIsModalOpen] = useState(false);
 
+    const handleAddHabit = (newHabit: Habit) {
+        setHabits((prev) => [...prev, newHabit])
+    }
+    
         const DATE_OPTIONS = {
             weekday: 'long',
             month: 'short',
@@ -31,6 +36,16 @@ function Dashboard() {
 
     return (
         <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-8">
+
+            <div>
+                {(isModalOpen ? (
+                    <HabitForm
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                    />
+                ) : null)}
+            </div>
+
             <nav className="flex items-center justify-between pb-8 mb-8 border-b border-slate-800">
                 <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">Dashboard</p>
                 <div>
@@ -51,7 +66,7 @@ function Dashboard() {
                         <p className="text-sm text-slate-400 mt-1">{formattedDate}</p>
                     </div>
 
-                    <button className="self-start sm:self-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95">
+                    <button className="self-start sm:self-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 active:scale-95" onClick={() => setIsModalOpen((prev) => !prev)}>
                         + Add New Habit
                     </button>
 

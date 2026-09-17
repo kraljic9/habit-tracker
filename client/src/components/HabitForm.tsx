@@ -1,24 +1,66 @@
-import React, { use, useState } from 'react';
-import type { Category, Metric } from '../types';
+import React, { useState } from 'react';
+import type {Category, Metric, NumericMetric, TimerMetric, Habit } from '../types';
 
 interface FormProps {
   isOpen: boolean;
   onClose: () => void;
   // Pass children or add your internal form elements inside!
-  children?: React.ReactNode; 
+  onAddHabit: (habit: Habit) => void
 }
 
-export default function Form({ isOpen, onClose, children }: FormProps) {
+export default function Form({ isOpen, onClose, onAddHabit }: FormProps) {
   
   type MetricKind = Metric['kind']
+  type NumericTarget = NumericMetric['target']
+  type NumericUnit = NumericMetric['unit']
+  type TimerMinutes = TimerMetric['targetMinutes'] 
 
   let [category, setCategory] = useState<Category>('Health');
   let [metricKind, setMetricKind] = useState<MetricKind>('boolean')
 
-  let [habitName, setHabitName] = useState<string>('');
-  let [targetGoal, setTargetGoal] = useState<number>(1);
-  let [unit, setUnit] = useState<string>('')
-  let [duaration, setDuaration] = useState<number>(15);
+  let [title, setTitle] = useState<string>('');
+  let [targetGoal, setTargetGoal] = useState<NumericTarget>(1);
+  let [unit, setUnit] = useState<NumericUnit>('')
+  let [duaration, setDuaration] = useState<TimerMinutes>(15);
+
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    let metric: Metric;
+    
+    if (metricKind === 'boolean') {
+      metric = {
+        kind: 'boolean',
+        completed: false,
+      };
+    } else if (metricKind === 'numeric') {
+      metric = {
+        kind: 'numeric',
+        current: 0,
+        target: targetGoal,
+        unit: unit,
+      };
+    } else {
+      metric = {
+        kind: 'timer',
+        durationMinutes: 0,
+        targetMinutes: duaration,
+      };
+    }
+    
+    const newHabit: Habit = {
+      id: Date.now(), // or crypto.randomUUID()
+      title,
+      category,
+      metric,
+      streak: 0,
+    };
+    
+    onAddHabit(newHabit)
+    
+    onClose()
+  }
 
   if (!isOpen) return null;
 
@@ -46,7 +88,8 @@ export default function Form({ isOpen, onClose, children }: FormProps) {
         {/* Your custom form inputs go here */}
 
         <label> Habit Name </label>
-        <input type="text" name='HabitName' className='bg-white rounded-lg w-full'/>
+        <input type="text" name='HabitName' className='bg-white rounded-lg w-full' onChange={(e) => setTitle(e.target.value)
+        }/>
       
         <label> Categorie </label>
         <select name="categories" id="" onChange={(e) => setCategory(e.target.value as Category)}>
@@ -63,13 +106,27 @@ export default function Form({ isOpen, onClose, children }: FormProps) {
         </div>  
 
         <div>
+            {metricKind === 'numeric' && (
+              <>
+              <label>Target Goal</label>
+              <input type="number" onChange={(e) => setTargetGoal(Number(e.target.value) as NumericTarget)}/>
 
+              <label>Unit</label>
+              <input type="text" onChange={(e) => setUnit(e.target.value as NumericUnit)}/>
+              </>
+            ) }
+
+            {metricKind === 'timer' && (
+              <>
+              <label>Time</label>
+              <input type="number" onChange={(e) => setDuaration(Number(e.target.value) as TimerMinutes)}/><span>Minutes</span>
+              </>
+            )}
         </div>
       
-
         <div>
-          <button>Cancle</button>
-          <button>Create Habit</button>
+          <button onClick={handleSubmit}>Create Habit</button>
+          <button onClick={onClose}>Cancle</button>
         </div>
 
       </div>
