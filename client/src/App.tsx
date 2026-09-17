@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard'
 import Analysis from './components/Analysis'
 import Community from './components/Community'
 import Settings from './components/Settings'
-import "tailwindcss";
+
 
 function App() {
   return (
