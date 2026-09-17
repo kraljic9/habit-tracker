@@ -33,7 +33,6 @@ function Dashboard() {
         <>
             <nav>
                 <p>Dashboard</p>
-
                 <div>
                     {/* Add logo */}
                     <p>User's Dashboard <span>&#8964;</span></p>
@@ -41,16 +40,67 @@ function Dashboard() {
             </nav>
 
             <main>
-
                 {/* Progress */}
                 <div>
-                    <h3>My daily habits</h3>
-                    <p>{formattedDate}</p>
+                    <header>
+
+                    <div>
+                        <h3>My daily habits</h3>
+                        <p>{formattedDate}</p>
+                    </div>
+
+                    <button>
+                        + Add New Habit
+                    </button>
+
+                    </header>
+
+                    <div>
+                        <div>
+                            <p>Daily progres</p>
+                            <p>{dailyProgress}%</p>
+
+                            <div>
+                                {dailyProgress}%
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <p>Active Streak</p>
+
+                            <div>
+                                🔥 {activeStreak} Days
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <p>
+                                Weekly Goals
+                            </p>
+
+                            <div>
+                                <span>
+                                {weeklyGoal} / 7
+                                </span>
+                                <span>
+                                    COMPLETED  
+                                </span>
+                            </div>
+
+                            <div>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Habit Category */}
                 <div>
+                    <p>Category</p>
 
+                    <div>
+                        
+                    </div>
                 </div>
 
             </main>
