@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react"
 import type { Habit } from "../types";
 import HabitForm from "./HabitForm";
+
+const DATE_OPTIONS = {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+} as const
+
 function Dashboard() {
 
     let [dailyProgress, setDailyProgress] = useState(0);
@@ -16,17 +24,12 @@ function Dashboard() {
 
     console.log(habits)
 
-        const DATE_OPTIONS = {
-            weekday: 'long',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        } as const
 
         const [formattedDate, setFormattedDate] = useState(() => 
               new Date(Date.now()).toLocaleDateString('en-US', DATE_OPTIONS)
         )
 
+        // Date Sync Interval
         useEffect(() => {
             const interval = setInterval(() => {
                 const today = new Date(Date.now()).toLocaleDateString('en-US', DATE_OPTIONS)
@@ -35,6 +38,112 @@ function Dashboard() {
 
             return () => clearInterval(interval);
         }, [])
+
+            // Habit Timer Tick Interval
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setHabits((prevHabits) =>
+                    prevHabits.map((habit) => {
+                        if (
+                        habit.metric.kind !== 'timer' ||
+                        !habit.metric.isRunning ||
+                        (habit.metric.durationSeconds ?? 0) >= habit.metric.targetMinutes * 60
+                        ) {
+                        return habit;
+                        }
+
+                    const currentSeconds = habit.metric.durationSeconds ?? 0;
+                    const nextSecond = currentSeconds + 1; 
+                    const targetSeconds = habit.metric.targetMinutes * 60;
+                    const isNewlyCompleted = nextSecond === targetSeconds;
+
+                    console.log("Timer interval ticking...");
+
+                    return {
+                    ...habit,
+                    streak: isNewlyCompleted ? habit.streak + 1 : habit.streak,
+                    metric: {
+                        ...habit.metric,
+                        durationSeconds: nextSecond,
+                        isRunning: !isNewlyCompleted,
+                    },
+                    };
+                })
+                );
+            }, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
+// Functions kind increment
+
+            function handleIncrement(id : number) {
+                setHabits((prevHabits) => prevHabits.map((habit) => {
+                    if (habit.id !== id || habit.metric.kind !== 'numeric') {
+                        return habit
+                    }
+
+                    let nextCurrent = habit.metric.current + 1;
+                    let isNewlyCompleted = nextCurrent === habit.metric.target
+
+                    return {
+                        ...habit,
+                        streak: isNewlyCompleted ? habit.streak + 1 : habit.streak,
+                        metric: {
+                            ...habit.metric,
+                            current: nextCurrent
+                        }
+                    }
+                
+                }))
+            }
+
+            function handleDecrement(id: number) {
+                setHabits((prevHabits) => prevHabits.map((habit) => {
+
+                    if (habit.id !== id || habit.metric.kind !== 'numeric') {
+                        return habit
+                    }
+
+                    const wasCompleted = habit.metric.current >= habit.metric.target
+                    let nextCurrent = Math.max(0, habit.metric.current - 1);
+                    let isNotCompleted = wasCompleted && nextCurrent < habit.metric.target
+
+                    return {
+                        ...habit,
+                        streak: isNotCompleted ? Math.max(0, habit.streak - 1) : habit.streak,
+                        metric: {
+                            ...habit.metric,
+                            current: nextCurrent
+                        }
+                    }
+                }))
+            }
+
+            // Function kind timer
+
+            function toggleTimer(id : number) {
+                console.log("Toggling timer for ID:", id);
+              setHabits((prevHabits) => prevHabits.map((habit) => {
+                if (habit.id !== id || habit.metric.kind !== 'timer') {
+                    return habit
+                }
+
+                return {
+                    ...habit,
+                    metric: {
+                        ...habit.metric,
+                        isRunning: !habit.metric.isRunning
+                    }
+                }
+              }))
+            }
+
+            function formatTime(totalSeconds: number) {
+                const mins = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${mins.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
 
     return (
         <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-8">
@@ -129,7 +238,7 @@ function Dashboard() {
         
         <div className="flex flex-col gap-4 w-full">
             {habits.map((habit: Habit) => {
-            // 1. Determine category styles & progress bar colors
+            // Determine category styles & progress bar colors
             let badgeStyle = "";
             let barColor = "";
 
@@ -152,64 +261,19 @@ function Dashboard() {
                 break;
             }
 
-            // 2. Calculate progress percentage dynamically
+            // Calculate progress percentage dynamically
             let progressPercent = 0;
             if (habit.metric.kind === "numeric") {
                 progressPercent = Math.min((habit.metric.current / habit.metric.target) * 100, 100);
             } else if (habit.metric.kind === "timer") {
-                progressPercent = Math.min((habit.metric.durationMinutes / habit.metric.targetMinutes) * 100, 100);
+                const targetSecs = habit.metric.targetMinutes * 60;
+                progressPercent = Math.min(
+                  ((habit.metric.durationSeconds ?? 0) / targetSecs) * 100,
+                  100)
             }
-
-            // Functions kind increment
-
-            function handleIncrement(id : number) {
-                setHabits((prevHabits) => prevHabits.map((habit) => {
-                    if (habit.id !== id || habit.metric.kind !== 'numeric') {
-                        return habit
-                    }
-
-                    let nextCurrent = habit.metric.current + 1;
-                    let isNewlyCompleted = nextCurrent === habit.metric.target
-
-                    return {
-                        ...habit,
-                        streak: isNewlyCompleted ? habit.streak + 1 : habit.streak,
-                        metric: {
-                            ...habit.metric,
-                            current: nextCurrent
-                        }
-                    }
-                
-                }))
-            }
-
-            
-            function handleDecrement(id: number) {
-                setHabits((prevHabits) => prevHabits.map((habit) => {
-
-                    if (habit.id !== id || habit.metric.kind !== 'numeric') {
-                        return habit
-                    }
-
-                    const wasCompleted = habit.metric.current >= habit.metric.target
-                    let nextCurrent = Math.max(0, habit.metric.current - 1);
-                    let isNotCompleted = wasCompleted && nextCurrent < habit.metric.target
-
-                    return {
-                        ...habit,
-                        streak: isNotCompleted ? Math.max(0, habit.streak - 1) : habit.streak,
-                        metric: {
-                            ...habit.metric,
-                            current: nextCurrent
-                        }
-                    }
-                }))
-            }
-
-            // Function kind timer
 
             return (
-                        <div key={habit.id} className="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 flex flex-col gap-3">
+                    <div key={habit.id} className="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 flex flex-col gap-3">
                         
                         {/* Header */}
                         <div className="flex justify-between items-start">
@@ -269,9 +333,9 @@ function Dashboard() {
                         {habit.metric.kind === "timer" && (
                         <div className="flex items-center justify-between mt-2">
                             <span className="text-sm text-slate-400">
-                            {habit.metric.durationMinutes < habit.metric.targetMinutes ? (
+                            {habit.metric.durationSeconds < habit.metric.targetMinutes * 60 ? (
                                 <>
-                                Time: <strong className="text-slate-200">{habit.metric.durationMinutes}m</strong> / {habit.metric.targetMinutes}m
+                                Time:{''} <strong className="text-slate-200">{formatTime(habit.metric.durationSeconds)}</strong> / {formatTime(habit.metric.targetMinutes * 60)}
                                 </>
                             ) : (
                                 <span className="text-sm font-medium text-emerald-400">
@@ -280,8 +344,16 @@ function Dashboard() {
                             )}
                             </span>
                             <div className="flex gap-2">
-                            <button className="px-3 py-1 text-xs font-medium rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white">Start</button>
-                            <button className="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Pause</button>
+                            <button
+                                onClick={() => toggleTimer(habit.id)}
+                                className={`px-3 py-1 text-xs font-medium rounded-lg text-white transition-colors ${
+                                habit.metric.isRunning
+                                    ? 'bg-amber-500 hover:bg-amber-600'
+                                    : 'bg-indigo-500 hover:bg-indigo-600'
+                                }`}
+                            >
+                                {habit.metric.isRunning ? 'Pause' : 'Start'}
+                            </button>
                             </div>
                         </div>
                         )}
@@ -296,7 +368,7 @@ function Dashboard() {
                         )}
 
                         </div>
-                    );
+                    )
                     })}
                 </div>
                 </div>
