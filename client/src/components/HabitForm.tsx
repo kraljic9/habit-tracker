@@ -41,7 +41,7 @@ export default function Form({ isOpen, onClose, onAddHabit }: FormProps) {
     } else {
       metric = {
         kind: 'timer',
-        durationMinutes: 0,
+        durationSeconds: 0,
         targetMinutes: duaration,
       };
     }
