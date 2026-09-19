@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import type { Habit } from "../types";
 import HabitForm from "./HabitForm";
-import { useMemo } from "react";
+import { useHabitStats } from "../hooks/useHabitStats";
+import ProgressHeader from "./ProgressHeader";
 
 const DATE_OPTIONS = {
     weekday: 'long',
@@ -11,17 +12,19 @@ const DATE_OPTIONS = {
 } as const
 
 function Dashboard() {
-
+    
     let [habits, setHabits] = useState<Habit[]>([])
     let [isModalOpen, setIsModalOpen] = useState(false);
+    
+    const stats = useHabitStats(habits)
 
     const handleAddHabit = (newHabit: Habit) => {
         setHabits((prev) => [...prev, newHabit])
     }
-
-
-        const [formattedDate, setFormattedDate] = useState(() => 
-              new Date(Date.now()).toLocaleDateString('en-US', DATE_OPTIONS)
+    
+    
+    const [formattedDate, setFormattedDate] = useState(() => 
+        new Date(Date.now()).toLocaleDateString('en-US', DATE_OPTIONS)
         )
 
         // Date Sync Interval
@@ -66,55 +69,9 @@ function Dashboard() {
                 );
             }, 1000);
 
-  return () => clearInterval(interval);
-}, []);
-
-    // Progress tracking
-
-    // Progress tracking
-    const { dailyProgress, totalCompletedToday, totalHabits, maxStreak } = useMemo(() => {
-        if (habits.length === 0) return { dailyProgress: 0, totalCompletedToday: 0, totalHabits: 0, maxStreak: 0 };
-
-        let totalProgressSum = 0;
-        let completedCount = 0;
-        let maxStreakVal = 0;
-
-        habits.forEach((habit) => {
-            let habitPercent = 0;
-
-            if (habit.metric.kind === "boolean") {
-                habitPercent = habit.metric.completed ? 100 : 0;
-            } else if (habit.metric.kind === "numeric") {
-                habitPercent = Math.min((habit.metric.current / habit.metric.target) * 100, 100);
-            } else if (habit.metric.kind === "timer") {
-                const targetSecs = habit.metric.targetMinutes * 60;
-                habitPercent = Math.min(((habit.metric.durationSeconds ?? 0) / targetSecs) * 100, 100);
-            }
-            
-            if (habitPercent >= 100) {
-                completedCount += 1; 
-            }
-
-            if (habit.streak > maxStreakVal) {
-                maxStreakVal = habit.streak;
-            }
-
-            totalProgressSum += habitPercent;
-        });
-
-        return {
-            dailyProgress: Math.round(totalProgressSum / habits.length),
-            totalCompletedToday: completedCount,
-            totalHabits: habits.length,
-            maxStreak: maxStreakVal
-        };
-
-    }, [habits]);
-
-    // SVG Circle Calculations for the progress ring
-    const radius = 28;
-    const circumference = 2 * Math.PI * radius; // ~175.93
-    const strokeDashoffset = circumference - (dailyProgress / 100) * circumference;
+            return () => clearInterval(interval);
+        }, []);
+        
 
             // Functions kind increment
 
@@ -123,10 +80,10 @@ function Dashboard() {
                     if (habit.id !== id || habit.metric.kind !== 'numeric') {
                         return habit
                     }
-
+                    
                     let nextCurrent = habit.metric.current + 1;
                     let isNewlyCompleted = nextCurrent === habit.metric.target
-
+                    
                     return {
                         ...habit,
                         streak: isNewlyCompleted ? habit.streak + 1 : habit.streak,
@@ -135,21 +92,21 @@ function Dashboard() {
                             current: nextCurrent
                         }
                     }
-                
+                    
                 }))
             }
-
+            
             function handleDecrement(id: number) {
                 setHabits((prevHabits) => prevHabits.map((habit) => {
-
+                    
                     if (habit.id !== id || habit.metric.kind !== 'numeric') {
                         return habit
                     }
-
+                    
                     const wasCompleted = habit.metric.current >= habit.metric.target
                     let nextCurrent = Math.max(0, habit.metric.current - 1);
                     let isNotCompleted = wasCompleted && nextCurrent < habit.metric.target
-
+                    
                     return {
                         ...habit,
                         streak: isNotCompleted ? Math.max(0, habit.streak - 1) : habit.streak,
@@ -160,26 +117,26 @@ function Dashboard() {
                     }
                 }))
             }
-
+            
             // Function kind timer
-
+            
             function toggleTimer(id : number) {
                 console.log("Toggling timer for ID:", id);
-              setHabits((prevHabits) => prevHabits.map((habit) => {
-                if (habit.id !== id || habit.metric.kind !== 'timer') {
-                    return habit
-                }
-
-                return {
-                    ...habit,
-                    metric: {
-                        ...habit.metric,
-                        isRunning: !habit.metric.isRunning
+                setHabits((prevHabits) => prevHabits.map((habit) => {
+                    if (habit.id !== id || habit.metric.kind !== 'timer') {
+                        return habit
                     }
-                }
-              }))
+                    
+                    return {
+                        ...habit,
+                        metric: {
+                            ...habit.metric,
+                            isRunning: !habit.metric.isRunning
+                        }
+                    }
+                }))
             }
-
+            
             function formatTime(totalSeconds: number) {
                 const mins = Math.floor(totalSeconds / 60);
                 const seconds = totalSeconds % 60;
@@ -246,77 +203,7 @@ function Dashboard() {
                     </header>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-                        {/* Daily Progress */}
-                        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-5 rounded-2xl flex items-center justify-between">
-                            <div>
-                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Daily progress</p>
-                                <p className="text-3xl font-extrabold text-emerald-400">{dailyProgress}%</p>
-                            </div>
-
-                            {/* SVG Circular Progress Bar */}
-                            <div className="relative w-16 h-16 flex items-center justify-center">
-                                <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                                    {/* Background Circle */}
-                                    <circle
-                                        cx="32"
-                                        cy="32"
-                                        r={radius}
-                                        className="text-slate-800"
-                                        strokeWidth="5"
-                                        stroke="currentColor"
-                                        fill="transparent"
-                                    />
-                                    {/* Animated Progress Circle */}
-                                    <circle
-                                        cx="32"
-                                        cy="32"
-                                        r={radius}
-                                        className="text-emerald-400 transition-all duration-500 ease-out"
-                                        strokeWidth="5"
-                                        strokeDasharray={circumference}
-                                        strokeDashoffset={strokeDashoffset}
-                                        strokeLinecap="round"
-                                        stroke="currentColor"
-                                        fill="transparent"
-                                    />
-                                </svg>
-                                <span className="absolute font-bold text-xs text-emerald-400">
-                                    {dailyProgress}%
-                                </span>
-                            </div>
-                        </div>
-                        
-                        {/* Active Streak */}
-                        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Active Streak</p>
-                            <div className="text-3xl font-extrabold text-amber-500 flex items-center gap-2">
-                                🔥 {maxStreak} Days
-                            </div>
-                        </div>
-                        
-                        {/* Daily Goals Completed */}
-                        <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                                Goals Completed
-                            </p>
-
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-extrabold text-white">
-                                    {totalCompletedToday} / {totalHabits} {/* 🟢 CHANGED (Cleaned syntax) */}
-                                </span>
-                                <span className="text-xs font-bold text-slate-400 tracking-wider">
-                                    COMPLETED  
-                                </span>
-                            </div>
-
-                            <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
-                                <div 
-                                    className="bg-indigo-500 h-full rounded-full transition-all duration-300"
-                                    style={{ width: `${totalHabits > 0 ? (totalCompletedToday / totalHabits) * 100 : 0}%` }} /* 🟢 CHANGED (Fixed inline style width string syntax) */
-                                ></div>
-                            </div>
-                        </div>
+                       <ProgressHeader stats={stats} />
                     </div>
                 </div>
 
@@ -359,6 +246,7 @@ function Dashboard() {
                                 ((habit.metric.durationSeconds ?? 0) / targetSecs) * 100,
                                 100)
                             }
+
 
                     return (
                     <div key={habit.id} className="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 flex flex-col gap-3">
