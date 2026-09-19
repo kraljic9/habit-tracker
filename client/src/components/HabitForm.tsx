@@ -52,6 +52,7 @@ export default function Form({ isOpen, onClose, onAddHabit }: FormProps) {
       category,
       metric,
       streak: 0,
+      isComplete: false,
     };
 
     onAddHabit(newHabit);
