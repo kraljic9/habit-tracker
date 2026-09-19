@@ -22,8 +22,6 @@ function Dashboard() {
         setHabits((prev) => [...prev, newHabit])
     }
 
-    console.log(habits)
-
 
         const [formattedDate, setFormattedDate] = useState(() => 
               new Date(Date.now()).toLocaleDateString('en-US', DATE_OPTIONS)
@@ -57,7 +55,6 @@ function Dashboard() {
                     const targetSeconds = habit.metric.targetMinutes * 60;
                     const isNewlyCompleted = nextSecond === targetSeconds;
 
-                    console.log("Timer interval ticking...");
 
                     return {
                     ...habit,
@@ -143,6 +140,26 @@ function Dashboard() {
                 const mins = Math.floor(totalSeconds / 60);
                 const seconds = totalSeconds % 60;
                 return `${mins.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            function toggleCompleted(id: number) {
+                setHabits(() => habits.map((habit) => {
+                    if (id !== habit.id || habit.metric.kind !== 'boolean') {
+                        return habit
+                    }
+
+                    let isCompleted = habit.isComplete === true;
+
+                    return {
+                        ...habit,
+                        isComplete: !habit.isComplete,
+                        streak: !isCompleted ? habit.streak + 1 : Math.max(0, habit.streak - 1),
+                        metric: {
+                            ...habit.metric,
+                            completed: !habit.metric.completed
+                        }
+                    }
+                }))
             }
 
     return (
@@ -232,47 +249,47 @@ function Dashboard() {
                     </div>
                 </div>
 
-               {/* Habit Category */}
-        <div className="flex flex-col gap-4">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</p>
-        
-        <div className="flex flex-col gap-4 w-full">
-            {habits.map((habit: Habit) => {
-            // Determine category styles & progress bar colors
-            let badgeStyle = "";
-            let barColor = "";
+                            {/* Habit Category */}
+                        <div className="flex flex-col gap-4">
+                        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</p>
+                        
+                        <div className="flex flex-col gap-4 w-full">
+                            {habits.map((habit: Habit) => {
+                            // Determine category styles & progress bar colors
+                            let badgeStyle = "";
+                            let barColor = "";
 
-            switch (habit.category) {
-                case "Coding":
-                badgeStyle = "bg-blue-600 text-white";
-                barColor = "bg-blue-500";
-                break;
-                case "Mindfulness":
-                badgeStyle = "bg-purple-600 text-white";
-                barColor = "bg-purple-500";
-                break;
-                case "Health":
-                badgeStyle = "bg-red-600 text-white";
-                barColor = "bg-red-500";
-                break;
-                case "Fitness":
-                badgeStyle = "bg-emerald-600 text-white";
-                barColor = "bg-emerald-500";
-                break;
-            }
+                            switch (habit.category) {
+                                case "Coding":
+                                badgeStyle = "bg-blue-600 text-white";
+                                barColor = "bg-blue-500";
+                                break;
+                                case "Mindfulness":
+                                badgeStyle = "bg-purple-600 text-white";
+                                barColor = "bg-purple-500";
+                                break;
+                                case "Health":
+                                badgeStyle = "bg-red-600 text-white";
+                                barColor = "bg-red-500";
+                                break;
+                                case "Fitness":
+                                badgeStyle = "bg-emerald-600 text-white";
+                                barColor = "bg-emerald-500";
+                                break;
+                            }
 
-            // Calculate progress percentage dynamically
-            let progressPercent = 0;
-            if (habit.metric.kind === "numeric") {
-                progressPercent = Math.min((habit.metric.current / habit.metric.target) * 100, 100);
-            } else if (habit.metric.kind === "timer") {
-                const targetSecs = habit.metric.targetMinutes * 60;
-                progressPercent = Math.min(
-                  ((habit.metric.durationSeconds ?? 0) / targetSecs) * 100,
-                  100)
-            }
+                            // Calculate progress percentage dynamically
+                            let progressPercent = 0;
+                            if (habit.metric.kind === "numeric") {
+                                progressPercent = Math.min((habit.metric.current / habit.metric.target) * 100, 100);
+                            } else if (habit.metric.kind === "timer") {
+                                const targetSecs = habit.metric.targetMinutes * 60;
+                                progressPercent = Math.min(
+                                ((habit.metric.durationSeconds ?? 0) / targetSecs) * 100,
+                                100)
+                            }
 
-            return (
+                    return (
                     <div key={habit.id} className="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 flex flex-col gap-3">
                         
                         {/* Header */}
@@ -291,10 +308,15 @@ function Dashboard() {
                         {/* Metric-Specific Controls */}
                         {habit.metric.kind === "boolean" && (
                             <div className="flex items-center justify-between mt-2">
-                            <span className="text-sm text-slate-400">
+                            {
+                            !habit.metric.completed ? <span className="text-sm text-slate-400">
                                 Status: {habit.metric.completed ? "Done" : "Pending"}
+                            </span> : <span className="text-sm font-medium text-emerald-400">
+                                Completed ✅
                             </span>
-                            <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors">
+                            }
+                            <button className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                            onClick={() => toggleCompleted(habit.id)}>
                                 {habit.metric.completed ? "Completed ✅" : "Mark Complete"}
                             </button>
                             </div>
@@ -357,6 +379,7 @@ function Dashboard() {
                             </div>
                         </div>
                         )}
+
                         {/* Dynamic Progress Bar (Hidden for Boolean) */}
                         {habit.metric.kind !== "boolean" && (
                             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden mt-1">
