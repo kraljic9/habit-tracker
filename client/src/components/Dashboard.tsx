@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Habit } from "../types";
 import HabitForm from "./HabitForm";
+import { useMemo } from "react";
 
 const DATE_OPTIONS = {
     weekday: 'long',
@@ -10,10 +11,6 @@ const DATE_OPTIONS = {
 } as const
 
 function Dashboard() {
-
-    let [dailyProgress, setDailyProgress] = useState(0);
-    let [activeStreak, setActiveStreak] = useState(0);
-    let [weeklyGoal, setWeeklyGoal] = useState(0);
 
     let [habits, setHabits] = useState<Habit[]>([])
     let [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,7 +69,54 @@ function Dashboard() {
   return () => clearInterval(interval);
 }, []);
 
-// Functions kind increment
+    // Progress tracking
+
+    // Progress tracking
+    const { dailyProgress, totalCompletedToday, totalHabits, maxStreak } = useMemo(() => {
+        if (habits.length === 0) return { dailyProgress: 0, totalCompletedToday: 0, totalHabits: 0, maxStreak: 0 };
+
+        let totalProgressSum = 0;
+        let completedCount = 0;
+        let maxStreakVal = 0;
+
+        habits.forEach((habit) => {
+            let habitPercent = 0;
+
+            if (habit.metric.kind === "boolean") {
+                habitPercent = habit.metric.completed ? 100 : 0;
+            } else if (habit.metric.kind === "numeric") {
+                habitPercent = Math.min((habit.metric.current / habit.metric.target) * 100, 100);
+            } else if (habit.metric.kind === "timer") {
+                const targetSecs = habit.metric.targetMinutes * 60;
+                habitPercent = Math.min(((habit.metric.durationSeconds ?? 0) / targetSecs) * 100, 100);
+            }
+            
+            if (habitPercent >= 100) {
+                completedCount += 1; 
+            }
+
+            if (habit.streak > maxStreakVal) {
+                maxStreakVal = habit.streak;
+            }
+
+            totalProgressSum += habitPercent;
+        });
+
+        return {
+            dailyProgress: Math.round(totalProgressSum / habits.length),
+            totalCompletedToday: completedCount,
+            totalHabits: habits.length,
+            maxStreak: maxStreakVal
+        };
+
+    }, [habits]);
+
+    // SVG Circle Calculations for the progress ring
+    const radius = 28;
+    const circumference = 2 * Math.PI * radius; // ~175.93
+    const strokeDashoffset = circumference - (dailyProgress / 100) * circumference;
+
+            // Functions kind increment
 
             function handleIncrement(id : number) {
                 setHabits((prevHabits) => prevHabits.map((habit) => {
@@ -143,7 +187,7 @@ function Dashboard() {
             }
 
             function toggleCompleted(id: number) {
-                setHabits(() => habits.map((habit) => {
+                setHabits((prevHabits) => prevHabits.map((habit) => {
                     if (id !== habit.id || habit.metric.kind !== 'boolean') {
                         return habit
                     }
@@ -210,29 +254,56 @@ function Dashboard() {
                                 <p className="text-3xl font-extrabold text-emerald-400">{dailyProgress}%</p>
                             </div>
 
-                            <div className="w-16 h-16 rounded-full border-4 border-slate-800 border-t-emerald-400 flex items-center justify-center font-bold text-xs text-emerald-400">
-                                {dailyProgress}%
+                            {/* SVG Circular Progress Bar */}
+                            <div className="relative w-16 h-16 flex items-center justify-center">
+                                <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                                    {/* Background Circle */}
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r={radius}
+                                        className="text-slate-800"
+                                        strokeWidth="5"
+                                        stroke="currentColor"
+                                        fill="transparent"
+                                    />
+                                    {/* Animated Progress Circle */}
+                                    <circle
+                                        cx="32"
+                                        cy="32"
+                                        r={radius}
+                                        className="text-emerald-400 transition-all duration-500 ease-out"
+                                        strokeWidth="5"
+                                        strokeDasharray={circumference}
+                                        strokeDashoffset={strokeDashoffset}
+                                        strokeLinecap="round"
+                                        stroke="currentColor"
+                                        fill="transparent"
+                                    />
+                                </svg>
+                                <span className="absolute font-bold text-xs text-emerald-400">
+                                    {dailyProgress}%
+                                </span>
                             </div>
                         </div>
                         
                         {/* Active Streak */}
                         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Active Streak</p>
-
                             <div className="text-3xl font-extrabold text-amber-500 flex items-center gap-2">
-                                🔥 {activeStreak} Days
+                                🔥 {maxStreak} Days
                             </div>
                         </div>
                         
-                        {/* Weekly Goals */}
+                        {/* Daily Goals Completed */}
                         <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-5 rounded-2xl flex flex-col justify-between">
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                                Weekly Goals
+                                Goals Completed
                             </p>
 
                             <div className="flex items-baseline gap-2">
                                 <span className="text-3xl font-extrabold text-white">
-                                {weeklyGoal} / 7
+                                    {totalCompletedToday} / {totalHabits} {/* 🟢 CHANGED (Cleaned syntax) */}
                                 </span>
                                 <span className="text-xs font-bold text-slate-400 tracking-wider">
                                     COMPLETED  
@@ -242,7 +313,7 @@ function Dashboard() {
                             <div className="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
                                 <div 
                                     className="bg-indigo-500 h-full rounded-full transition-all duration-300"
-                                    style={{ width: `${(weeklyGoal / 7) * 100}%` }}
+                                    style={{ width: `${totalHabits > 0 ? (totalCompletedToday / totalHabits) * 100 : 0}%` }} /* 🟢 CHANGED (Fixed inline style width string syntax) */
                                 ></div>
                             </div>
                         </div>
