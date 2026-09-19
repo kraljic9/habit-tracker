@@ -11,4 +11,5 @@ export type Habit = {
     category: Category,
     metric: Metric,
     streak: number
+    isComplete: boolean,
 }
