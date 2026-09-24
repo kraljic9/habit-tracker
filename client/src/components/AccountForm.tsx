@@ -5,9 +5,10 @@ interface AccountProps {
     isOpen: boolean,
     onClose: () => void,
     onAddUser: (newUser: User) => void,
+    onLogInUser: (credentials: { username: string; password: string }) => void;
 }
 
-export default function AccountForm({isOpen, onClose, onAddUser}: AccountProps) {
+export default function AccountForm({isOpen, onClose, onAddUser, onLogInUser}: AccountProps) {
 
     const [name, setName] = useState<string>('');
     const [userName, setUserName] = useState<string>('');
@@ -37,7 +38,12 @@ export default function AccountForm({isOpen, onClose, onAddUser}: AccountProps) 
             habits: []
         };
 
-        onAddUser(newUser);
+        if (!isLoggingIn) {
+            onAddUser(newUser);
+        } else {
+            onLogInUser({ username: userName, password: password });
+        }
+
         onClose();
     };
 
