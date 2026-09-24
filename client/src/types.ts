@@ -22,3 +22,18 @@ export type Habit = {
     streak: number
     isComplete: boolean,
 }
+
+export interface Users {
+    users: User[];
+}
+
+export type User = {
+    id: number,
+    name: string,
+    username: string,
+    email: string,
+    password: string,
+    createdAt: string,
+    totalStreak: number,
+    habits: Habit[];
+}
