@@ -21,14 +21,19 @@ function Dashboard() {
     let [isAccountModelOpen, setIsAccountModelOpen] = useState(false)
     const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted} = useCardButtonHooks();
     
-    const stats = useHabitStats(habits)
-
+    
     const [isLogedIn, setIsLogedIn] = useState(false)
     const [isDropdownOpen, setIsDropdownOpen] = useState(false) // Controls dropdown visibility
-
-    const [currentUser, setCurrentUser] = useState<User | null>();
-
+    
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    
     const [users, setUsers] = useState<User[]>([])
+    
+    const userHabits = habits.filter(
+        (habit) => habit.userId === currentUser?.id
+    );
+    
+    const stats = useHabitStats(userHabits)
 
     const handleAddUser = (newUser: User) => {
         setUsers((prev) => [...prev, newUser])
@@ -81,6 +86,7 @@ function Dashboard() {
                         isOpen={isModalOpen}
                         onClose={() => setIsModalOpen(false)}
                         onAddHabit={handleAddHabit}
+                        user={currentUser}
                     />
                 ) : null)}
             </div>
@@ -105,7 +111,7 @@ function Dashboard() {
                         onClick={() => setIsDropdownOpen((prev) => !prev)}
                         className="text-sm font-medium text-slate-200 bg-slate-900 border border-slate-800 hover:border-slate-700 px-4 py-2 rounded-full cursor-pointer transition-all select-none"
                     >
-                       {isLogedIn ? `User's dashboard` : 'Guest please login'} <span className="text-xs ml-1 text-slate-400">&#8964;</span>
+                       {isLogedIn ? `${currentUser?.username}'s dashboard` : 'Guest please login'} <span className="text-xs ml-1 text-slate-400">&#8964;</span>
                     </p>
 
                     {/* Dropdown Menu */}
@@ -116,6 +122,7 @@ function Dashboard() {
                                     onClick={() => {
                                         setIsDropdownOpen(false);
                                         setIsLogedIn(false); // Handles logout logic
+                                        setCurrentUser(null) 
                                     }}
                                     className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800 transition-colors"
                                 >
@@ -155,21 +162,24 @@ function Dashboard() {
                     </header>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                       <ProgressHeader stats={stats} />
+                       <ProgressHeader stats={stats}/>
                     </div>
                 </div>
 
                 {/* Habit List */}
                 <div className="flex flex-col gap-4">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Category</p>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">My habits</p>
 
+                    {currentUser ? (
                     <HabitList
-                        habits={habits}
+                        habits={userHabits}
                         toggleCompleted={toggleCompleted}
                         handleIncrement={handleIncrement}
                         handleDecrement={handleDecrement}
                         toggleTimer={toggleTimer}
                     />
+                    ) : null
+                    }
                     <div className="flex flex-col gap-4 w-full">
                     </div>
                 </div>
