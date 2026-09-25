@@ -40,6 +40,7 @@ export default function AccountForm({isOpen, onClose, onAddUser, onLogInUser}: A
 
         if (!isLoggingIn) {
             onAddUser(newUser);
+            onLogInUser(newUser);
         } else {
             onLogInUser({ username: userName, password: password });
         }
