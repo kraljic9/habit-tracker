@@ -6,6 +6,7 @@ import { HabitList } from "./HabitList";
 import { useCardButtonHooks } from "../hooks/useCardButtonHooks";
 import  AccountForm  from "./AccountForm";
 import type{ User } from "../types";
+import type { LoginPayload } from "../types";
 
 const DATE_OPTIONS = {
     weekday: 'long',
@@ -33,14 +34,21 @@ function Dashboard() {
         setUsers((prev) => [...prev, newUser])
     }
 
-    const handleLoginUser = (credentials: { username: string }) => {
-        const foundUser = users.find((user) => user.username === credentials.username);
+    const handleLoginUser = (payload: LoginPayload) => {
+
+        if ('id' in payload) {
+            setCurrentUser(payload)
+            setIsLogedIn(true)
+            return
+        }
+
+        const foundUser = users.find((user) => user.username === payload.username && user.password === payload.password);
   
         if (foundUser) {
             setCurrentUser(foundUser);
             setIsLogedIn(true);
         } else {
-            alert("User not found!");
+            alert("Invalid username or password");
         }
     };
 
