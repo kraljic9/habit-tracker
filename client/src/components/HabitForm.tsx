@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import type { Category, Metric, NumericMetric, TimerMetric, Habit } from '../types';
+import type { Category, Metric, NumericMetric, TimerMetric, Habit, User } from '../types';
 
 interface FormProps {
   isOpen: boolean;
+  user: User | null;
   onClose: () => void;
   onAddHabit: (habit: Habit) => void;
 }
 
-export default function Form({ isOpen, onClose, onAddHabit }: FormProps) {
+export default function Form({ isOpen, user, onClose, onAddHabit }: FormProps) {
   type MetricKind = Metric['kind'];
   type NumericTarget = NumericMetric['target'];
   type NumericUnit = NumericMetric['unit'];
@@ -23,6 +24,11 @@ export default function Form({ isOpen, onClose, onAddHabit }: FormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+    alert("Please log in to add a habit!");
+    return;
+  }
 
     let metric: Metric;
 
@@ -48,6 +54,7 @@ export default function Form({ isOpen, onClose, onAddHabit }: FormProps) {
 
     const newHabit: Habit = {
       id: Date.now(),
+      userId: user.id,
       title,
       category,
       metric,
