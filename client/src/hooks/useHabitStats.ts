@@ -47,5 +47,6 @@ export function useHabitStats(habits: Habit[]): HabitStats {
             totalHabits: habits.length,
             maxStreak: maxStreakVal,
         };
+
     }, [habits]);
 }
