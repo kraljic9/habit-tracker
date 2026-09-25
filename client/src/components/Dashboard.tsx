@@ -8,6 +8,7 @@ import  AccountForm  from "./AccountForm";
 import type{ User } from "../types";
 import type { LoginPayload } from "../types";
 
+
 const DATE_OPTIONS = {
     weekday: 'long',
     month: 'short',
@@ -17,26 +18,50 @@ const DATE_OPTIONS = {
 
 function Dashboard() {
     
+    // Models
     let [isModalOpen, setIsModalOpen] = useState(false);
     let [isAccountModelOpen, setIsAccountModelOpen] = useState(false)
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false) // Controls dropdown visibility
+    
+
     const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted} = useCardButtonHooks();
     
     
-    const [isLogedIn, setIsLogedIn] = useState(false)
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false) // Controls dropdown visibility
+    // Users and user status
+    const [users, setUsers] = useState<User[]>(() => {
+        const saved = localStorage.getItem('users')
+        return saved ? JSON.parse(saved) : [];
+    })
+
+    const [currentUser, setCurrentUser] = useState<User | null>(() => {
+        const saved = localStorage.getItem('currentUser')
+        return saved ? JSON.parse(saved) : null
+    })
+
+    const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)  
     
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    
-    const [users, setUsers] = useState<User[]>([])
-    
+    useEffect(() => {
+        localStorage.setItem('users', JSON.stringify(users));
+    }, [users])
+
+    useEffect(() => {
+        if (currentUser) {
+            localStorage.setItem('currentUser', JSON.stringify(currentUser))
+        } else {
+            localStorage.removeItem('currentUser')
+        }
+    }, [currentUser])
+
     const userHabits = habits.filter(
         (habit) => habit.userId === currentUser?.id
     );
-    
-    const stats = useHabitStats(userHabits)
 
+    const stats = useHabitStats(userHabits)
+    
     const handleAddUser = (newUser: User) => {
         setUsers((prev) => [...prev, newUser])
+
+        localStorage.setItem('users', JSON.stringify(users))
     }
 
     const handleLoginUser = (payload: LoginPayload) => {
@@ -44,6 +69,7 @@ function Dashboard() {
         if ('id' in payload) {
             setCurrentUser(payload)
             setIsLogedIn(true)
+            localStorage.setItem('currentUser', JSON.stringify(payload))
             return
         }
 
