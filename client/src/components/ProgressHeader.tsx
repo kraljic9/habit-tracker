@@ -1,5 +1,6 @@
 import type { HabitStats } from "../hooks/useHabitStats";
 
+
 interface ProgressHeaderProps {
     stats: HabitStats;
 }
