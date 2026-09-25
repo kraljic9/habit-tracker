@@ -5,6 +5,8 @@ export type TimerMetric = {kind: 'timer', durationSeconds: number, targetMinutes
 export type Metric = BooleanMetric | NumericMetric | TimerMetric;
 export type Category = 'Health' | 'Coding' | 'Fitness' | 'Mindfulness'
 
+export type LoginPayload = {username: string, password: string} | User;
+
 export interface CardButtonHooksReturn {
     habits: Habit[],
     handleAddHabit: (newHabit: Habit) => void;
