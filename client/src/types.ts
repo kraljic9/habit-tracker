@@ -17,7 +17,8 @@ export interface CardButtonHooksReturn {
 }
 
 export type Habit = {
-    id: number,
+    id: number;
+    userId: number;
     title: string,
     category: Category,
     metric: Metric,
@@ -38,4 +39,4 @@ export type User = {
     createdAt: string,
     totalStreak: number,
     habits: Habit[];
-}
+} 
