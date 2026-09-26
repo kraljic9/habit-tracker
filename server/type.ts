@@ -1,12 +1,12 @@
 export interface Habit {
-  id: string;
-  userId: string;
+  id: number;
+  userId: number;
   title: string;
   completed: boolean;
 }
 
 export interface User {
-    id: string,
+    id: number,
     name: string,
     username: string,
     email: string,
