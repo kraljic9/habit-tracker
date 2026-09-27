@@ -1,11 +1,12 @@
+import axios from "axios";
 import type { Habit } from "../types";
 import type { CardButtonHooksReturn } from "../types";
 import { useState } from 'react';
 import { useEffect } from "react";
 
-export function useCardButtonHooks(initialHabits: Habit[] = []): CardButtonHooksReturn {
+export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
             
-            const [habits, setHabits] = useState<Habit[]>(initialHabits);
+            const [habits, setHabits] = useState<Habit[]>([]);
     
              // Habit Timer Tick Interval
                         useEffect(() => {
@@ -41,13 +42,51 @@ export function useCardButtonHooks(initialHabits: Habit[] = []): CardButtonHooks
             
                         return () => clearInterval(interval);
                     }, []);
-               
-            // Add habits
 
-            const handleAddHabit = (newHabit: Habit) => {
-                    setHabits((prev) => [...prev, newHabit])
+
+            // Display users habits
+            useEffect(() => {
+
+                if (!userId) return;
+
+                const fetchHabits = async () => {
+                    try{
+                        const response = await axios.get('http://localhost:5000/api/habits');
+                        setHabits(response.data);
+                    }catch(err){
+                        console.log('Error accured failed to fetch habits', err)
+                    }
                 }
 
+                fetchHabits();
+            }, [])
+               
+            // Add habits
+            const handleAddHabit = async (habitData: Omit<Habit, 'id' | 'userId'>) => {
+                    if (!userId) return;
+
+                    try {
+                        const response = await axios.post('http://localhost:5000/api/habits', {
+                            ...habitData,
+                            userId: userId // Attach the userId from the hook parameter
+                        });
+                        setHabits(prev => [...prev, response.data]);
+                    } catch (err) {
+                        console.error("Failed to create habit", err);
+                    }
+                };
+
+
+            // Sync habit edit
+
+            const syncHabitWithServer = async (updatedHabit: Habit) => {
+                try{
+                    await axios.put(`http://localhost:5000/api/habits/${updatedHabit.id}`, updatedHabit)
+                }
+                catch(err) {
+                    console.error("Failed to persist habit update", err);
+                }
+            }
 
             // Functions kind increment
 
@@ -60,7 +99,7 @@ export function useCardButtonHooks(initialHabits: Habit[] = []): CardButtonHooks
                     let nextCurrent = habit.metric.current + 1;
                     let isNewlyCompleted = nextCurrent === habit.metric.target
                     
-                    return {
+                    const update = {
                         ...habit,
                         streak: isNewlyCompleted ? habit.streak + 1 : habit.streak,
                         metric: {
@@ -68,10 +107,14 @@ export function useCardButtonHooks(initialHabits: Habit[] = []): CardButtonHooks
                             current: nextCurrent
                         }
                     }
-                    
+
+                    syncHabitWithServer(update);
+                    return update
                 }))
             }
             
+            // function kind decrement
+
             function handleDecrement(id: number) {
                 setHabits((prevHabits) => prevHabits.map((habit) => {
                     
@@ -83,7 +126,7 @@ export function useCardButtonHooks(initialHabits: Habit[] = []): CardButtonHooks
                     let nextCurrent = Math.max(0, habit.metric.current - 1);
                     let isNotCompleted = wasCompleted && nextCurrent < habit.metric.target
                     
-                    return {
+                    const update = {
                         ...habit,
                         streak: isNotCompleted ? Math.max(0, habit.streak - 1) : habit.streak,
                         metric: {
@@ -91,6 +134,9 @@ export function useCardButtonHooks(initialHabits: Habit[] = []): CardButtonHooks
                             current: nextCurrent
                         }
                     }
+
+                    syncHabitWithServer(update)
+                    return update
                 }))
             }
             
