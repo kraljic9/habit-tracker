@@ -16,7 +16,7 @@ let users: User[] = []
 app.post('/api/register/user', (req, res) => {
     const newUser: User = {
         ...req.body,
-        id: Date.now().toString(),
+        id: Date.now(),
         createdAt: new Date().toISOString(),
         totalStreak: 0,
         habits: []
@@ -65,7 +65,8 @@ app.post('/api/habits', (req, res) => {
     
     const newHabit: Habit = {
         ...req.body,
-        id: Date.now().toString()
+        id: Date.now(),
+        userId: req.body.userId
     };
 
     habits.push(newHabit);
