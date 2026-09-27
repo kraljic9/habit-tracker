@@ -149,13 +149,16 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                         return habit
                     }
                     
-                    return {
+                    const update = {
                         ...habit,
                         metric: {
                             ...habit.metric,
                             isRunning: !habit.metric.isRunning
                         }
                     }
+
+                    syncHabitWithServer(update)
+                    return update
                 }))
             }
         
@@ -168,7 +171,7 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
 
                     let isCompleted = habit.isComplete === true;
 
-                    return {
+                    const update = {
                         ...habit,
                         isComplete: !habit.isComplete,
                         streak: !isCompleted ? habit.streak + 1 : Math.max(0, habit.streak - 1),
@@ -177,6 +180,9 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                             completed: !habit.metric.completed
                         }
                     }
+
+                    syncHabitWithServer(update);
+                    return update
                 }))
             }
 
