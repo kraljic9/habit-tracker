@@ -7,6 +7,7 @@ import { useCardButtonHooks } from "../hooks/useCardButtonHooks";
 import  AccountForm  from "./AccountForm";
 import type{ User } from "../types";
 import type { LoginPayload } from "../types";
+import axios from "axios";
 
 
 const DATE_OPTIONS = {
@@ -26,12 +27,7 @@ function Dashboard() {
 
     const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted} = useCardButtonHooks();
     
-    
-    // Users and user status
-    const [users, setUsers] = useState<User[]>(() => {
-        const saved = localStorage.getItem('users')
-        return saved ? JSON.parse(saved) : [];
-    })
+    // User all user functions
 
     const [currentUser, setCurrentUser] = useState<User | null>(() => {
         const saved = localStorage.getItem('currentUser')
@@ -40,9 +36,6 @@ function Dashboard() {
 
     const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)  
     
-    useEffect(() => {
-        localStorage.setItem('users', JSON.stringify(users));
-    }, [users])
 
     useEffect(() => {
         if (currentUser) {
@@ -58,27 +51,27 @@ function Dashboard() {
 
     const stats = useHabitStats(userHabits)
     
-    const handleAddUser = (newUser: User) => {
-        setUsers((prev) => [...prev, newUser])
+    const handleAddUser = async (newUser: User) => {
+        try{
+            const response = await axios.post('http://localhost:5000/api/register/user', newUser)
+            const registeredUser = response.data;
 
-        localStorage.setItem('users', JSON.stringify(users))
+            setCurrentUser(registeredUser)
+            setIsLogedIn(true)
+        }
+        catch(err) {
+            console.error("Registration failed", err);
+        }
     }
 
-    const handleLoginUser = (payload: LoginPayload) => {
+    const handleLoginUser = async (payload: LoginPayload) => {
+        try{
+            const response = await axios.post('http://localhost:5000/api/login/user', payload);
+            const user = response.data;
 
-        if ('id' in payload) {
-            setCurrentUser(payload)
-            setIsLogedIn(true)
-            localStorage.setItem('currentUser', JSON.stringify(payload))
-            return
-        }
-
-        const foundUser = users.find((user) => user.username === payload.username && user.password === payload.password);
-  
-        if (foundUser) {
-            setCurrentUser(foundUser);
+            setCurrentUser(user);
             setIsLogedIn(true);
-        } else {
+        } catch (err){
             alert("Invalid username or password");
         }
     };
@@ -102,6 +95,8 @@ function Dashboard() {
         const seconds = totalSeconds % 60;
         return `${mins.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
+
+    console.log(currentUser)
 
     return (
         <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-8">
