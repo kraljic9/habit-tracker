@@ -47,6 +47,15 @@ app.post('/api/login/user', (req, res) => {
 // GET habits
 
 app.get('/api/habits', (req, res) => {
+
+    const userId = req.query.userId ? Number(req.query.userId) : undefined;
+
+    if (userId) {
+        const userHabits = habits.filter(habit => habit.userId === userId);
+        res.status(200).json(userHabits);
+        return;
+    }
+
     res.status(200).json(habits)
 })
 
