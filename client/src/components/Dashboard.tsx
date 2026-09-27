@@ -24,17 +24,21 @@ function Dashboard() {
     let [isAccountModelOpen, setIsAccountModelOpen] = useState(false)
     const [isDropdownOpen, setIsDropdownOpen] = useState(false) // Controls dropdown visibility
     
-
-    const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted} = useCardButtonHooks();
-    
     // User all user functions
 
     const [currentUser, setCurrentUser] = useState<User | null>(() => {
         const saved = localStorage.getItem('currentUser')
         return saved ? JSON.parse(saved) : null
     })
-
+    
     const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)  
+    
+    
+    const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted} = useCardButtonHooks(
+        currentUser?.id ? currentUser.id : undefined
+    );
+    
+
     
 
     useEffect(() => {
