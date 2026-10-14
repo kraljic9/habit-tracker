@@ -34,13 +34,10 @@ function Dashboard() {
     const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)  
     
     
-    const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted} = useCardButtonHooks(
+    const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted, handleDelete} = useCardButtonHooks(
         currentUser?.id ? currentUser.id : undefined
     );
     
-
-    
-
     useEffect(() => {
         if (currentUser) {
             localStorage.setItem('currentUser', JSON.stringify(currentUser))
@@ -100,7 +97,7 @@ function Dashboard() {
         return `${mins.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    console.log(currentUser)
+   
 
     return (
         <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-8">
@@ -202,6 +199,7 @@ function Dashboard() {
                         handleIncrement={handleIncrement}
                         handleDecrement={handleDecrement}
                         toggleTimer={toggleTimer}
+                        handleDelete={handleDelete}
                     />
                     ) : null
                     }
