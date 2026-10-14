@@ -76,6 +76,20 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                     }
                 };
 
+              // remove habits
+
+            const handleDelete = async (id: number): Promise<void> => {
+                try{
+                    await axios.delete(`http://localhost:5000/api/habits/${id}`)
+                    
+                    const newHabits = habits.filter((habit) => habit.id !== id);
+                    setHabits(newHabits)
+                }catch(err) {
+                    console.log("Failed to delete habit", err)
+                }
+
+            }
+
 
             // Sync habit edit
 
@@ -186,6 +200,8 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 }))
             }
 
-            return {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted}
+          
+
+            return {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted, handleDelete}
 
 }
