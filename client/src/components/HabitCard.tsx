@@ -1,4 +1,5 @@
 import type { Habit } from "../types";
+import { Trash2 } from 'lucide-react';
 
 export interface HabitCardProps {
   habit: Habit;
@@ -6,6 +7,7 @@ export interface HabitCardProps {
   handleIncrement: (id: number) => void;
   handleDecrement: (id: number) => void;
   toggleTimer: (id: number) => void;
+  handleDelete: (id: number) => void;
 }
 
 function formatTime(seconds: number): string {
@@ -20,6 +22,7 @@ export function HabitCard({
   handleIncrement,
   handleDecrement,
   toggleTimer,
+  handleDelete
 }: HabitCardProps) {
   // Category badge & progress bar styling
   let badgeStyle = "";
@@ -71,9 +74,18 @@ export function HabitCard({
             {habit.title}
           </h3>
         </div>
-        <span className="text-xs font-medium text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg">
-          🔥 {habit.streak} Days
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg">
+            🔥 {habit.streak} Days
+          </span>
+          <button
+            className="p-1 text-slate-400 hover:text-red-400 transition-colors rounded-lg hover:bg-slate-800"
+            title="Delete Habit"
+            onClick={() => handleDelete(habit.id)}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Boolean Metric Controls */}
@@ -111,7 +123,7 @@ export function HabitCard({
               Completed ✅
             </span>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 align-center">
             <button
               className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-bold border border-red-500/30 transition-colors disabled:opacity-50"
               onClick={() => handleDecrement(habit.id)}
