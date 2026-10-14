@@ -82,8 +82,7 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 try{
                     await axios.delete(`http://localhost:5000/api/habits/${id}`)
                     
-                    const newHabits = habits.filter((habit) => habit.id !== id);
-                    setHabits(newHabits)
+                    setHabits((prev) => prev.filter((habit) => habit.id !== id))
                 }catch(err) {
                     console.log("Failed to delete habit", err)
                 }
