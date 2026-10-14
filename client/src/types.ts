@@ -14,6 +14,7 @@ export interface CardButtonHooksReturn {
     handleDecrement: (id: number) => void,
     toggleTimer: (id: number) => void,
     toggleCompleted: (id: number) => void
+    handleDelete: (id: number) => void
 }
 
 export type Habit = {
