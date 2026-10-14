@@ -7,6 +7,7 @@ interface HabitListProps {
   handleIncrement: (id: number) => void;
   handleDecrement: (id: number) => void;
   toggleTimer: (id: number) => void;
+  handleDelete: (id: number) => void;
 }
 
 export function HabitList({ habits, ...handlers }: HabitListProps) {
