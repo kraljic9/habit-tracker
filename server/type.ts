@@ -1,5 +1,5 @@
 // backend types.ts
-export type Category = 'health' | 'fitness' | 'productivity' | 'learning' | 'other'; // or whatever categories you use
+export type Category = 'health' | 'fitness' | 'productivity' | 'learning' | 'other';
 
 export type Metric = 
   | { kind: 'numeric'; current: number; target: number }
