@@ -85,43 +85,52 @@ app.get('/api/habits', async (req, res) => {
 
 app.post('/api/habits', async (req, res) => {
     try{
-    const newHabit: Habit = {
-        ...req.body,
-        id: Date.now(),
-        userId: req.body.userId
-    };
+    const queryText = `
+    INSERT INTO habits ( userid, title, category, metric, streak, iscomplete)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING *
+    `;
 
-    habits.push(newHabit);
-    
-    res.status(201).json(newHabit);
-} catch(err) {
+    const values = [ req.body.userId, req.body.title, req.body.category, req.body.metric, req.body.streak, req.body.isComplete];
+    const result = await pool.query(queryText, values);
 
+    res.status(201).json(result.rows[0])
+} catch(err: any) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
 }
 })
 
 // PUT habits
 
-app.put('/api/habits/:id', (req, res) => {
-    try{
-    const habitId = Number(req.params.id);
+app.put('/api/habits/:id', async (req, res) => {
+    try {
+        const habitId = Number(req.params.id);
+        const {title, category, streak, isComplete, metric} = req.body;
 
-    const index = habits.findIndex((habit) => habit.id === habitId);
+        const queryText = `
+            UPDATE habits
+            SET title = $1, category = $2, streak = $3, iscomplete = $4, metric = $5
+            WHERE id = $6
+            RETURNING *
+        `
 
-    if (index === -1) {
-        res.status(404).json({ message: 'Habit not found' });
-        return;
-    }
+        const value = [title, category, streak, isComplete, JSON.stringify(metric), habitId];
 
-    habits[index] = {
-        ...habits[index],
-        ...req.body,
-    }
+        const result = await pool.query(queryText, value);
 
-    res.status(200).json(habits[index]);
-} catch(err){
+        if (result.rowCount === 0) {
+            res.status(404).json({ message: 'Habit not found' });
+            return;
+        }
 
-}  
-}) 
+        res.status(200).json(result.rows[0]);
+
+    } catch (err: any) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }  
+});
 
 // DELETE habits
 
