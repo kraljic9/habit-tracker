@@ -137,18 +137,26 @@ app.put('/api/habits/:id', async (req, res) => {
 app.delete('/api/habits/:id', async (req, res) => {
     try{
     const habitId = Number(req.params.id);
+    
+    const queryText = `
+        DELETE FROM habits
+        WHERE id = $1
+        RETURNING *
+    ` ;
 
-    const index = habits.findIndex((habit) => habit.id === habitId);
+    const value = [habitId]
+    const result = await pool.query(queryText, value);
+    
+    if (result.rowCount === 0) {
+    res.status(404).json({ message: 'Habit not found' });
+    return;
+}
 
-    if (index === -1) {
-        res.status(404).json({ message: 'Habit not found' });
-        return;
-    }
-
-    habits.splice(index, 1);
-
-    res.status(200).json({ message: `Habit ${habitId} deleted` });
-} catch(err) {}
+    res.status(200).json(result.rows);
+} catch(err: any) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+}
 })
 
 // Connection check
