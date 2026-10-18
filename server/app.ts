@@ -30,11 +30,24 @@ app.post('/api/register/user', async (req, res) => {
         habits: []
     }
 
-    const {password: _, ...displayUserData} = newUser;
+    const {name, username, email, createdAt, totalStreak} = newUser;
 
-    res.status(201).json(displayUserData);
-} catch(err) {
+    const queryText = `
+        INSERT INTO users (name, username, email, password, createdat, totalstreak)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+    `
 
+    const values = [name, username, email, hiddenPassword, createdAt, totalStreak]
+
+    const result = await pool.query(queryText, values);
+
+    const {password: _} = result.rows[0];
+
+    res.status(201).json(result.rows[0]);
+} catch(err:any) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
 }
 })
 
@@ -54,8 +67,9 @@ app.post('/api/login/user', async (req, res) => {
     }
 
     res.status(200).json(curUser)
-} catch(err) {
-
+} catch(err:any) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
 }
 })
 
@@ -76,8 +90,9 @@ app.get('/api/habits', async (req, res) => {
 
     const result = await pool.query('SELECT * FROM habits');
     res.status(200).json(result.rows);
-} catch(err) {
-    console.log(err);
+} catch(err:any) {
+        console.error(err.message);
+    res.status(500).send('Server Error');
 }
 })
 
