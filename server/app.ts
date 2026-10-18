@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import type{ Habit, User} from './type.js';
+import bcrypt from 'bcrypt';
 
 const app = express();
 const PORT = 5000;
@@ -13,18 +14,24 @@ let users: User[] = []
 
 // Register user
 
-app.post('/api/register/user', (req, res) => {
+app.post('/api/register/user', async (req, res) => {
+
+    const {password, ...otherUserData} = req.body;
+
+    const hiddenPassword = await bcrypt.hash(password, 10);
+
     const newUser: User = {
-        ...req.body,
+        ...otherUserData,
+        password: hiddenPassword,
         id: Date.now(),
         createdAt: new Date().toISOString(),
         totalStreak: 0,
         habits: []
     }
 
-    users.push(newUser);
+    const {password: _, ...displayUserData} = newUser;
 
-    res.status(201).json(newUser);
+    res.status(201).json(displayUserData);
 })
 
 // Login user
