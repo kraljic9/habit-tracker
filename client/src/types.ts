@@ -1,5 +1,9 @@
+import type { ReactNode } from "react";
+
 export type BooleanMetric = {kind: 'boolean', completed: boolean};
-export type NumericMetric = {kind: 'numeric', current: number, target: number,};
+export type NumericMetric = {
+  unit: ReactNode; kind: 'numeric', current: number, target: number,
+};
 export type TimerMetric = {kind: 'timer', durationSeconds: number, targetMinutes: number, isRunning?: boolean};
 
 export type Metric = BooleanMetric | NumericMetric | TimerMetric;
@@ -39,5 +43,4 @@ export type User = {
     password: string,
     createdAt: string,
     totalStreak: number,
-    habits: Habit[];
 } 
