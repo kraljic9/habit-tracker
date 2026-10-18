@@ -10,39 +10,22 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-let habits: Habit[] = [];
-let users: User[] = []
-
 // Register user
 
 app.post('/api/register/user', async (req, res) => {
     try{
-    const {password, ...otherUserData} = req.body;
+    const {name, username, email, password,} = req.body;
 
     const hiddenPassword = await bcrypt.hash(password, 10);
 
-    const newUser: User = {
-        ...otherUserData,
-        password: hiddenPassword,
-        id: Date.now(),
-        createdAt: new Date().toISOString(),
-        totalStreak: 0,
-        habits: []
-    }
-
-    const {name, username, email, createdAt, totalStreak} = newUser;
-
     const queryText = `
-        INSERT INTO users (name, username, email, password, createdat, totalstreak)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
+        INSERT INTO users (name, username, email, password)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, name, username, email, totalstreak, createdat
     `
 
-    const values = [name, username, email, hiddenPassword, createdAt, totalStreak]
-
+    const values = [name, username, email, hiddenPassword]
     const result = await pool.query(queryText, values);
-
-    const {password: _} = result.rows[0];
 
     res.status(201).json(result.rows[0]);
 } catch(err:any) {
@@ -58,15 +41,33 @@ app.post('/api/login/user', async (req, res) => {
     try{
 
     const {username, password} = req.body;
-
-    const curUser = users.find(user => user.username === username && user.password === password);
     
-    if (!curUser) {
+    const textQuery = `
+        SELECT * FROM users
+        WHERE username = $1
+    `
+
+    const result = await pool.query(textQuery, [username]);
+
+    if (result.rows.length === 0) {
+        res.status(401).json({ message: 'Invalid username or password' });
+        return;
+    }
+    
+    const user = result.rows[0];
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
         res.status(401).json({ message: 'Invalid username or password' });
         return;
     }
 
-    res.status(200).json(curUser)
+    const {password: _, ...userData} = user;
+
+    res.status(200).json(userData);
+
+   
 } catch(err:any) {
     console.error(err.message);
     res.status(500).send('Server Error');

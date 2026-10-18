@@ -24,5 +24,4 @@ export interface User {
     password: string,
     createdAt: string,
     totalStreak: number,
-    habits: Habit[];
 }

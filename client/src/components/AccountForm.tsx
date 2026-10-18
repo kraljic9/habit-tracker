@@ -35,7 +35,6 @@ export default function AccountForm({isOpen, onClose, onAddUser, onLogInUser}: A
             password: password,
             createdAt: new Date().toISOString(),
             totalStreak: 0,
-            habits: []
         };
 
         if (!isLoggingIn) {

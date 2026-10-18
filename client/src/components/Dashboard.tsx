@@ -97,8 +97,6 @@ function Dashboard() {
         return `${mins.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
 
-   
-
     return (
         <div className="flex-1 min-h-screen bg-slate-950 text-slate-100 p-8">
 
