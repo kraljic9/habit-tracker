@@ -46,13 +46,12 @@ function Dashboard() {
         }
     }, [currentUser])
 
-    const userHabits = habits.filter(
-        (habit) => habit.userId === currentUser?.id
-    );
+    const userHabits = habits;
 
     const stats = useHabitStats(userHabits)
     
-    const handleAddUser = async (newUser: User) => {
+    const 
+    handleAddUser = async (newUser: User) => {
         try{
             const response = await axios.post('http://localhost:5000/api/register/user', newUser)
             const registeredUser = response.data;

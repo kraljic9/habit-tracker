@@ -47,11 +47,14 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
             // Display users habits
             useEffect(() => {
 
+                console.log("Current userId value:", userId, typeof userId);
+
                 if (!userId) return;
 
                 const fetchHabits = async () => {
                     try{
-                        const response = await axios.get('http://localhost:5000/api/habits');
+                        const response = await axios.get(`http://localhost:5000/api/habits?userId=${userId}`);
+                        console.log("First habit object properties:", response.data[0]);
                         setHabits(response.data);
                     }catch(err){
                         console.log('Error accured failed to fetch habits', err)
@@ -59,7 +62,7 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 }
 
                 fetchHabits();
-            }, [])
+            }, [userId])
                
             // Add habits
             const handleAddHabit = async (habitData: Omit<Habit, 'id' | 'userId'>) => {
