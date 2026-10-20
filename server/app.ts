@@ -81,12 +81,47 @@ app.get('/api/habits', async (req, res) => {
 
     try{
 
-    const userId = req.query.userId ? Number(req.query.userId) : undefined;
+       const todayObj = new Date();
+       const today = todayObj.toISOString().split('T')[0];
 
-    if (userId) {
-        const result = await pool.query('SELECT * FROM habits WHERE userid = $1', [userId]) 
-        res.status(200).json(result.rows);
-        return;
+       const yesterdayObj = new Date();
+       yesterdayObj.setDate(todayObj.getDate() - 1);
+       const yesterday = yesterdayObj.toISOString().split('T')[0];
+
+
+        const userId = req.query.userId ? Number(req.query.userId) : undefined;
+
+        if (userId) {
+            const result = await pool.query('SELECT * FROM habits WHERE userid = $1', [userId]) 
+
+            for (let i = 0; i < result.rows.length; i++) {
+                let habit : Habit = result.rows[i];
+                let needsUpdate = false;
+
+                const lastReset = habit.last_reset_date;
+                const lastCompleted = habit.last_completed_date;
+
+                if (!lastReset || (today && lastReset < today)) {
+                    habit.isComplete = false;
+                    habit.last_reset_date = today;
+                    needsUpdate = true;
+                }
+
+                if (lastCompleted && yesterday && lastCompleted < yesterday) {
+                    habit.streak = 0;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    await pool.query(
+                        'UPDATE habits SET iscomplete = $1, last_reset_date = $2, streak = $3 WHERE id = $4',
+                        [habit.isComplete, habit.last_reset_date, habit.streak, habit.id]
+                    );
+                }
+            }
+
+            res.status(200).json(result.rows);
+            return;
     }
 
     const result = await pool.query('SELECT * FROM habits');
@@ -101,6 +136,7 @@ app.get('/api/habits', async (req, res) => {
 
 app.post('/api/habits', async (req, res) => {
     try{
+
     const queryText = `
     INSERT INTO habits ( userid, title, category, metric, streak, iscomplete)
     VALUES ($1, $2, $3, $4, $5, $6)

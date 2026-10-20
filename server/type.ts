@@ -14,6 +14,8 @@ export interface Habit {
   metric: Metric;
   streak: number;
   isComplete: boolean;
+  last_completed_date?: string | null | undefined;
+  last_reset_date?: string | null | undefined;
 }
 
 export interface User {
