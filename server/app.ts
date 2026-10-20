@@ -132,6 +132,56 @@ app.get('/api/habits', async (req, res) => {
 }
 })
 
+// PATCH habits streak
+
+app.patch('/api/habit/:id', async(req, res) => {
+    try{
+       const habitId = req.params.id;
+       const {isComplete} = req.body;
+
+       const habitResult = await pool.query(`SELECT * FROM habits WHERE id = $1`, [habitId]);
+    
+        if (habitResult.rows.length === 0) {
+            res.status(404).send('Habit not found');
+            return;
+        }
+    
+        const habit = habitResult.rows[0] as Habit;
+        const today = new Date().toISOString().split('T')[0];
+
+        let newStreak = habit.streak;
+        let newLastCompleted = habit.last_completed_date;
+        
+        if (isComplete) {
+
+            if (newLastCompleted !== today) {
+                newStreak += 1;
+                newLastCompleted = today;
+            }
+
+         } else {
+
+            if (newLastCompleted === today) {
+                newStreak = Math.max(0, newStreak - 1);
+                newLastCompleted = null
+            }
+        }
+        
+
+        let updateResult = await pool.query(
+            `UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3 WHERE id = $4 RETURNING *`,
+            [isComplete, newStreak, newLastCompleted, habitId]
+        )
+
+        res.status(200).json(updateResult.rows[0]);
+
+    }catch(err: any){
+        console.error(err.message);
+        res.status(500).send('Server Error')
+    }
+})
+
+
 // POST habits
 
 app.post('/api/habits', async (req, res) => {
