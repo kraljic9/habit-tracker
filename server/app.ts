@@ -101,12 +101,17 @@ app.get('/api/habits', async (req, res) => {
                 const lastReset = habit.last_reset_date;
                 const lastCompleted = habit.last_completed_date;
 
-                if (!lastReset || (today && lastReset < today)) {
-                    habit.isComplete = false;
-                    habit.last_reset_date = today;
-                    needsUpdate = true;
+               if (!lastReset || (today && lastReset < today)) {
+                habit.isComplete = false;
+                habit.last_reset_date = today;
+                
+                // Also ensure the JSONB metric completed flag resets to false!
+                if (habit.metric && habit.metric.kind === 'boolean') {
+                    habit.metric.completed = false;
                 }
-
+                
+                needsUpdate = true;
+}
                 if (lastCompleted && yesterday && lastCompleted < yesterday) {
                     habit.streak = 0;
                     needsUpdate = true;
@@ -114,8 +119,8 @@ app.get('/api/habits', async (req, res) => {
 
                 if (needsUpdate) {
                     await pool.query(
-                        'UPDATE habits SET iscomplete = $1, last_reset_date = $2, streak = $3 WHERE id = $4',
-                        [habit.isComplete, habit.last_reset_date, habit.streak, habit.id]
+                        'UPDATE habits SET iscomplete = $1, last_reset_date = $2, streak = $3, metric = $4 WHERE id = $5',
+                        [habit.isComplete, habit.last_reset_date, habit.streak, JSON.stringify(habit.metric), habit.id]
                     );
                 }
             }
@@ -134,12 +139,12 @@ app.get('/api/habits', async (req, res) => {
 
 // PATCH habits streak
 
-app.patch('/api/habit/:id', async(req, res) => {
-    try{
-       const habitId = req.params.id;
-       const {isComplete} = req.body;
+app.patch('/api/habits/:id', async (req, res) => {
+    try {
+        const habitId = req.params.id;
+        const { isComplete } = req.body; // boolean from frontend
 
-       const habitResult = await pool.query(`SELECT * FROM habits WHERE id = $1`, [habitId]);
+        const habitResult = await pool.query(`SELECT * FROM habits WHERE id = $1`, [habitId]);
     
         if (habitResult.rows.length === 0) {
             res.status(404).send('Habit not found');
@@ -149,39 +154,47 @@ app.patch('/api/habit/:id', async(req, res) => {
         const habit = habitResult.rows[0] as Habit;
         const today = new Date().toISOString().split('T')[0];
 
-        let newStreak = habit.streak;
+        let newStreak = Number(habit.streak);
         let newLastCompleted = habit.last_completed_date;
         
-        if (isComplete) {
+        // Coerce database boolean safely
+        const wasCompleted = habit.iscomplete === true || habit.iscomplete === 'true' || (habit.iscomplete as any) === 1;
 
-            if (newLastCompleted !== today) {
+        console.log(`[BACKEND PATCH] Habit ID: ${habitId} | Incoming isComplete: ${isComplete} | DB wasCompleted: ${wasCompleted} | Current Streak: ${newStreak}`);
+
+        if (isComplete === true) {
+            if (!wasCompleted) {
                 newStreak += 1;
                 newLastCompleted = today;
+                console.log(`-> Incrementing streak to ${newStreak}`);
             }
-
-         } else {
-
-            if (newLastCompleted === today) {
+        } else {
+            if (wasCompleted) {
                 newStreak = Math.max(0, newStreak - 1);
-                newLastCompleted = null
+                newLastCompleted = null;
+                console.log(`-> Decrementing streak to ${newStreak}`);
+            } else {
+                console.log(`-> Skipped decrement because wasCompleted was false`);
             }
         }
         
+        const updatedMetric = {
+            kind: 'boolean',
+            completed: isComplete
+        };
 
         let updateResult = await pool.query(
-            `UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3 WHERE id = $4 RETURNING *`,
-            [isComplete, newStreak, newLastCompleted, habitId]
-        )
+            `UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3, metric = $4 WHERE id = $5 RETURNING *`,
+            [isComplete, newStreak, newLastCompleted, JSON.stringify(updatedMetric), habitId]
+        );
 
         res.status(200).json(updateResult.rows[0]);
 
-    }catch(err: any){
-        console.error(err.message);
-        res.status(500).send('Server Error')
+    } catch (err: any) {
+        console.error("PATCH Error:", err.message);
+        res.status(500).send('Server Error');
     }
-})
-
-
+});
 // POST habits
 
 app.post('/api/habits', async (req, res) => {
