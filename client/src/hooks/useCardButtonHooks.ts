@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useEffect } from "react";
 
 export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
-            
+                
             const [habits, setHabits] = useState<Habit[]>([]);
     
              // Habit Timer Tick Interval
@@ -178,30 +178,34 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 }))
             }
         
+            // Inside useCardButtonHooks.ts
 
-            function toggleCompleted(id: number) {
-                setHabits((prevHabits) => prevHabits.map((habit) => {
-                    if (id !== habit.id || habit.metric.kind !== 'boolean') {
-                        return habit
-                    }
+const patchHabitStatus = async (id: number, isComplete: boolean) => {
+    try {
+        const response = await axios.patch(`http://localhost:5000/api/habits/${id}`, {
+            isComplete
+        });
 
-                    let isCompleted = habit.isComplete === true;
+        setHabits((prevHabits) => 
+            prevHabits.map((habit) => habit.id === id ? response.data : habit)
+        );
+    } catch (err) {
+        console.error("Failed to update habit status", err);
+    }
+};
 
-                    const update = {
-                        ...habit,
-                        isComplete: !habit.isComplete,
-                        streak: !isCompleted ? habit.streak + 1 : Math.max(0, habit.streak - 1),
-                        metric: {
-                            ...habit.metric,
-                            completed: !habit.metric.completed
-                        }
-                    }
+function toggleCompleted(id: number) {
+    const habit = habits.find(h => h.id === id);
+    if (!habit || habit.metric.kind !== 'boolean') return;
 
-                    syncHabitWithServer(update);
-                    return update
-                }))
-            }
+    console.log(`Frontend habit before toggle:`, habit);
+    console.log(`habit.metric.completed value is:`, habit.metric.completed);
 
+    const nextIsComplete = !habit.metric.completed;
+    console.log(`Calculated nextIsComplete to send:`, nextIsComplete);
+
+    patchHabitStatus(id, nextIsComplete);
+}
           
 
             return {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted, handleDelete}
