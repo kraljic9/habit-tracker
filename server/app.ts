@@ -158,7 +158,7 @@ app.patch('/api/habits/:id', async (req, res) => {
         let newLastCompleted = habit.last_completed_date;
         
         // Coerce database boolean safely
-        const wasCompleted = habit.iscomplete === true || habit.iscomplete === 'true' || (habit.iscomplete as any) === 1;
+        const wasCompleted = (habit as any).iscomplete === true || (habit as any).iscomplete === 'true' || (habit as any).iscomplete === 1;
 
         console.log(`[BACKEND PATCH] Habit ID: ${habitId} | Incoming isComplete: ${isComplete} | DB wasCompleted: ${wasCompleted} | Current Streak: ${newStreak}`);
 
