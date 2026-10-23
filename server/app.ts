@@ -141,9 +141,7 @@ app.get('/api/habits', async (req, res) => {
 
 app.patch('/api/habits/:id', async (req, res) => {
     try {
-        const habitId = req.params.id;
-        const { isComplete } = req.body; // boolean from frontend
-
+        const habitId = req.params.id;        
         const habitResult = await pool.query(`SELECT * FROM habits WHERE id = $1`, [habitId]);
     
         if (habitResult.rows.length === 0) {
@@ -156,45 +154,67 @@ app.patch('/api/habits/:id', async (req, res) => {
 
         let newStreak = Number(habit.streak);
         let newLastCompleted = habit.last_completed_date;
-        
-        // Coerce database boolean safely
+
         const wasCompleted = (habit as any).iscomplete === true || (habit as any).iscomplete === 'true' || (habit as any).iscomplete === 1;
 
-        console.log(`[BACKEND PATCH] Habit ID: ${habitId} | Incoming isComplete: ${isComplete} | DB wasCompleted: ${wasCompleted} | Current Streak: ${newStreak}`);
+        let finalIsComplete = false;
+        let updatedMetric: any;
 
-        if (isComplete === true) {
-            if (!wasCompleted) {
-                newStreak += 1;
-                newLastCompleted = today;
-                console.log(`-> Incrementing streak to ${newStreak}`);
-            }
-        } else {
-            if (wasCompleted) {
-                newStreak = Math.max(0, newStreak - 1);
-                newLastCompleted = null;
-                console.log(`-> Decrementing streak to ${newStreak}`);
-            } else {
-                console.log(`-> Skipped decrement because wasCompleted was false`);
-            }
+        if (habit.metric.kind === 'boolean') {
+                
+            const { isComplete: incomingIsComplete } = req.body; // boolean from frontend
+            finalIsComplete = incomingIsComplete 
+
+        if (finalIsComplete && !wasCompleted) {
+            newStreak += 1;
+            newLastCompleted = today;
+        } else if (!finalIsComplete && wasCompleted) {
+            newStreak = Math.max(0, newStreak - 1);
+            newLastCompleted = null;
         }
         
-        const updatedMetric = {
+        updatedMetric = {
             kind: 'boolean',
-            completed: isComplete
+            completed: finalIsComplete
         };
 
-        let updateResult = await pool.query(
-            `UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3, metric = $4 WHERE id = $5 RETURNING *`,
-            [isComplete, newStreak, newLastCompleted, JSON.stringify(updatedMetric), habitId]
-        );
+    } else if (habit.metric.kind === 'numeric') {
 
-        res.status(200).json(updateResult.rows[0]);
+        const {increment} = req.body;
+        const currentCount = Number(habit.metric.current || 0);
+        const targetCount = Number(habit.metric.current || 1);
+
+        const newCurrent = Math.max(0, currentCount + (increment || 0));
+        finalIsComplete = newCurrent >= targetCount;
+
+        if (finalIsComplete && !wasCompleted) {
+            newStreak += 1;
+            newLastCompleted = today
+        } else {
+            newStreak - 1;
+            newLastCompleted = null;
+        }
+
+        updatedMetric = {
+                kind: 'numeric',
+                current: newCurrent,
+                target: targetCount
+            };
+    }
+
+    let updateResult = await pool.query(
+        'UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3, metric = $4 WHERE id = $5 RETURNING *',
+        [finalIsComplete, newStreak, newLastCompleted, JSON.stringify(updatedMetric), habitId]
+    )
+
+    res.status(201).json(updateResult.rows[0])
 
     } catch (err: any) {
         console.error("PATCH Error:", err.message);
         res.status(500).send('Server Error');
     }
 });
+
 // POST habits
 
 app.post('/api/habits', async (req, res) => {
