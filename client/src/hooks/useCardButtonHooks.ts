@@ -104,58 +104,6 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 }
             }
 
-            // Functions kind increment
-
-            function handleIncrement(id : number) {
-                setHabits((prevHabits) => prevHabits.map((habit) => {
-                    if (habit.id !== id || habit.metric.kind !== 'numeric') {
-                        return habit
-                    }
-                    
-                    let nextCurrent = habit.metric.current + 1;
-                    let isNewlyCompleted = nextCurrent === habit.metric.target
-                    
-                    const update = {
-                        ...habit,
-                        streak: isNewlyCompleted ? habit.streak + 1 : habit.streak,
-                        metric: {
-                            ...habit.metric,
-                            current: nextCurrent
-                        }
-                    }
-
-                    syncHabitWithServer(update);
-                    return update
-                }))
-            }
-            
-            // function kind decrement
-
-            function handleDecrement(id: number) {
-                setHabits((prevHabits) => prevHabits.map((habit) => {
-                    
-                    if (habit.id !== id || habit.metric.kind !== 'numeric') {
-                        return habit
-                    }
-                    
-                    const wasCompleted = habit.metric.current >= habit.metric.target
-                    let nextCurrent = Math.max(0, habit.metric.current - 1);
-                    let isNotCompleted = wasCompleted && nextCurrent < habit.metric.target
-                    
-                    const update = {
-                        ...habit,
-                        streak: isNotCompleted ? Math.max(0, habit.streak - 1) : habit.streak,
-                        metric: {
-                            ...habit.metric,
-                            current: nextCurrent
-                        }
-                    }
-
-                    syncHabitWithServer(update)
-                    return update
-                }))
-            }
-            
             // Function kind timer
             
             function toggleTimer(id : number) {
@@ -178,34 +126,72 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 }))
             }
         
-            // Inside useCardButtonHooks.ts
+            // Patch toggle complet
 
-const patchHabitStatus = async (id: number, isComplete: boolean) => {
-    try {
-        const response = await axios.patch(`http://localhost:5000/api/habits/${id}`, {
-            isComplete
-        });
+            const patchHabitStatus = async (id: number, isComplete: boolean) => {
+                try {
+                    const response = await axios.patch(`http://localhost:5000/api/habits/${id}`, {
+                        isComplete
+                    });
 
-        setHabits((prevHabits) => 
-            prevHabits.map((habit) => habit.id === id ? response.data : habit)
-        );
-    } catch (err) {
-        console.error("Failed to update habit status", err);
-    }
-};
+                    setHabits((prevHabits) => 
+                        prevHabits.map((habit) => habit.id === id ? response.data : habit)
+                    );
+                } catch (err) {
+                    console.error("Failed to update habit status", err);
+                }
+            };
 
-function toggleCompleted(id: number) {
-    const habit = habits.find(h => h.id === id);
-    if (!habit || habit.metric.kind !== 'boolean') return;
+            // Patch increment and decrement
 
-    console.log(`Frontend habit before toggle:`, habit);
-    console.log(`habit.metric.completed value is:`, habit.metric.completed);
+            const patchNumericHabit = async (id: number, increment: number) => {
+                try{
 
-    const nextIsComplete = !habit.metric.completed;
-    console.log(`Calculated nextIsComplete to send:`, nextIsComplete);
+                    const response = await axios.patch(`http://localhost:5000/api/habits/${id}`, {
+                        increment
+                    })
 
-    patchHabitStatus(id, nextIsComplete);
-}
+                      setHabits((prevHabits) => 
+                        prevHabits.map((habit) => habit.id === id ? response.data : habit)
+                    );
+
+                }catch (err) {
+                    console.error("Failed to update habit status", err);
+                }
+            }
+
+            // Handle functions
+
+            function toggleCompleted(id: number) {
+                const habit = habits.find(h => h.id === id);
+                if (!habit || habit.metric.kind !== 'boolean') return;
+
+                const nextIsComplete = !habit.metric.completed;
+            
+                patchHabitStatus(id, nextIsComplete);
+            }
+
+             // Functions kind increment
+
+            function handleIncrement(id : number) {
+                
+                const habit = habits.find(h => h.id === id);
+                if (!habit || habit.metric.kind !== 'numeric') return;
+
+                patchNumericHabit(id, 1)    
+            
+            }
+            
+            // function kind decrement
+
+            function handleDecrement(id: number) {
+                
+                const habit = habits.find((h) => h.id === id);
+
+                if (!habit || habit.metric.kind !== 'numeric') return;
+
+                patchNumericHabit(id, -1);
+            }
           
 
             return {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted, handleDelete}
