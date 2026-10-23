@@ -182,7 +182,7 @@ app.patch('/api/habits/:id', async (req, res) => {
 
         const {increment} = req.body;
         const currentCount = Number(habit.metric.current || 0);
-        const targetCount = Number(habit.metric.current || 1);
+        const targetCount = Number(habit.metric.target || 1);
 
         const newCurrent = Math.max(0, currentCount + (increment || 0));
         finalIsComplete = newCurrent >= targetCount;
@@ -190,8 +190,8 @@ app.patch('/api/habits/:id', async (req, res) => {
         if (finalIsComplete && !wasCompleted) {
             newStreak += 1;
             newLastCompleted = today
-        } else {
-            newStreak - 1;
+        } else if (!finalIsComplete && wasCompleted) {
+            newStreak = Math.max(0, newStreak - 1);
             newLastCompleted = null;
         }
 
