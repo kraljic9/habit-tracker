@@ -158,7 +158,7 @@ app.patch('/api/habits/:id', async (req, res) => {
         const wasCompleted = (habit as any).iscomplete === true || (habit as any).iscomplete === 'true' || (habit as any).iscomplete === 1;
 
         let finalIsComplete = false;
-        let updatedMetric: any;
+        let updatedMetric: any = habit.metric;
 
         if (habit.metric.kind === 'boolean') {
                 
@@ -200,6 +200,30 @@ app.patch('/api/habits/:id', async (req, res) => {
                 current: newCurrent,
                 target: targetCount
             };
+    } else if (habit.metric.kind === 'timer') {
+
+        const {durationSeconds} = req.body;
+        const currentSeconds = Number(habit.metric.durationSeconds || 0);
+        const targetMinutes= Number(habit.metric.targetMinutes || 1);
+        const targetSeconds = targetMinutes* 60;
+
+        let newCurrentTime = currentSeconds + (durationSeconds || 0);
+        finalIsComplete = newCurrentTime >= targetSeconds;
+
+
+        if (finalIsComplete && !wasCompleted) {
+            newStreak += 1;
+            newLastCompleted = today;
+        } else if (!finalIsComplete && wasCompleted) {
+            newStreak = Math.max(0, newStreak - 1);
+            newLastCompleted = null;
+        }
+    
+        updatedMetric = {
+            kind: 'timer',
+            durationSeconds: newCurrentTime,
+            targetMinutes: targetMinutes 
+        }
     }
 
     let updateResult = await pool.query(

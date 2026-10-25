@@ -103,28 +103,6 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                     console.error("Failed to persist habit update", err);
                 }
             }
-
-            // Function kind timer
-            
-            function toggleTimer(id : number) {
-                console.log("Toggling timer for ID:", id);
-                setHabits((prevHabits) => prevHabits.map((habit) => {
-                    if (habit.id !== id || habit.metric.kind !== 'timer') {
-                        return habit
-                    }
-                    
-                    const update = {
-                        ...habit,
-                        metric: {
-                            ...habit.metric,
-                            isRunning: !habit.metric.isRunning
-                        }
-                    }
-
-                    syncHabitWithServer(update)
-                    return update
-                }))
-            }
         
             // Patch toggle complet
 
@@ -157,6 +135,23 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
 
                 }catch (err) {
                     console.error("Failed to update habit status", err);
+                }
+            }
+
+            // Patch timer
+
+            const patchTimer = async(id: number, durationSeconds: number) => {
+                try{
+                const response = await axios.patch(`http://localhost:5000/api/habits/${id}`,{
+                    durationSeconds
+                });
+                
+                setHabits((prevHabits) => 
+                    prevHabits.map((habit) => habit.id === id ? response.data : habit)
+                )
+
+            } catch (err) {
+                console.error("Failed to update habit status", err);
                 }
             }
 
@@ -193,6 +188,28 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                 patchNumericHabit(id, -1);
             }
           
+            // Function kind timer
+            
+            function toggleTimer(id : number) {
+               
+                const habit = habits.find((h) => h.id === id);
+                if (!habit || habit.metric.kind !== 'timer') return;
+
+                const nextIsRunning = !habit.metric.isRunning;
+
+                setHabits((prevHabits) => 
+                    prevHabits.map((h) => h.id === id ? {
+                        ...h,
+                        metric: { ...h.metric, isRunning: nextIsRunning }
+                    } : h)
+                );
+
+                if (!nextIsRunning) {
+                    const currentSeconds = habit.metric.durationSeconds || 0;
+                    patchTimer(id, currentSeconds)
+                }
+            }
+
 
             return {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted, handleDelete}
 
