@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import type{ Habit, User} from './type.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import 'dotenv/config'
 import pool from './db.ts'
+
 
 const app = express();
 const PORT = 5000;
@@ -10,11 +13,25 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
+
+if (!process.env.JWT_SECRET) {
+    throw new Error("FATAL: JWT_SECRET is not defined in environment variables.");
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
 // Register user
 
 app.post('/api/register/user', async (req, res) => {
     try{
     const {name, username, email, password,} = req.body;
+
+    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+
+    if (existingUser.rows.length > 0) {
+        res.status(400).json({ error: 'Email already in use' });
+        return;
+    }
 
     const hiddenPassword = await bcrypt.hash(password, 10);
 
@@ -29,7 +46,7 @@ app.post('/api/register/user', async (req, res) => {
 
     res.status(201).json(result.rows[0]);
 } catch(err:any) {
-    console.error(err.message);
+    console.error("Registration Error:", err.message);
     res.status(500).send('Server Error');
 }
 })
@@ -50,7 +67,7 @@ app.post('/api/login/user', async (req, res) => {
     const result = await pool.query(textQuery, [username]);
 
     if (result.rows.length === 0) {
-        res.status(401).json({ message: 'Invalid username or password' });
+        res.status(401).json({ error: 'Invalid username or password' });
         return;
     }
     
@@ -59,13 +76,13 @@ app.post('/api/login/user', async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-        res.status(401).json({ message: 'Invalid username or password' });
+        res.status(401).json({ error: 'Invalid username or password' });
         return;
     }
 
-    const {password: _, ...userData} = user;
+    const token = jwt.sign({userId: user.id, email: user.email}, JWT_SECRET, {expiresIn: '1d'})
 
-    res.status(200).json(userData);
+    res.json({ token, userId: user.id, email: user.email });
 
    
 } catch(err:any) {
