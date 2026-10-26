@@ -142,7 +142,9 @@ function Dashboard() {
                                     onClick={() => {
                                         setIsDropdownOpen(false);
                                         setIsLogedIn(false); // Handles logout logic
-                                        setCurrentUser(null) 
+                                        setCurrentUser(null)
+                                        localStorage.removeItem('token');
+                                        localStorage.removeItem('currentUser'); 
                                     }}
                                     className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800 transition-colors"
                                 >
