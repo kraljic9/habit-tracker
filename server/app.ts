@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config'
 import pool from './db.ts'
-
+import { authenticateToken } from './auth.js';
 
 const app = express();
 const PORT = 5000;
@@ -22,141 +22,163 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 // Register user
 
+// Register user
 app.post('/api/register/user', async (req, res) => {
-    try{
-    const {name, username, email, password,} = req.body;
+    console.log(req.body);
+    try {
+        const { name, username, email, password } = req.body;
 
-    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+        const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-    if (existingUser.rows.length > 0) {
-        res.status(400).json({ error: 'Email already in use' });
-        return;
+        if (existingUser.rows.length > 0) {
+            res.status(400).json({ error: 'Email already in use' });
+            return;
+        }
+
+        const hiddenPassword = await bcrypt.hash(password, 10);
+
+        const queryText = `
+            INSERT INTO users (name, username, email, password)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, name, username, email, totalstreak, createdat
+        `;
+
+        const values = [name, username, email, hiddenPassword];
+        const result = await pool.query(queryText, values);
+        const newUser = result.rows[0];
+
+        // Generate JWT token upon registration
+        const token = jwt.sign({ userId: newUser.id, email: newUser.email }, JWT_SECRET, { expiresIn: '1d' });
+
+        res.status(201).json({ token, user: newUser });
+    } catch (err: any) {
+        console.error("Registration Error:", err.message);
+        res.status(500).send('Server Error');
     }
-
-    const hiddenPassword = await bcrypt.hash(password, 10);
-
-    const queryText = `
-        INSERT INTO users (name, username, email, password)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, name, username, email, totalstreak, createdat
-    `
-
-    const values = [name, username, email, hiddenPassword]
-    const result = await pool.query(queryText, values);
-
-    res.status(201).json(result.rows[0]);
-} catch(err:any) {
-    console.error("Registration Error:", err.message);
-    res.status(500).send('Server Error');
-}
-})
+});
 
 // Login user
-
 app.post('/api/login/user', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        const textQuery = `
+            SELECT * FROM users
+            WHERE username = $1
+        `;
 
-    try{
+        const result = await pool.query(textQuery, [username]);
 
-    const {username, password} = req.body;
-    
-    const textQuery = `
-        SELECT * FROM users
-        WHERE username = $1
-    `
+        if (result.rows.length === 0) {
+            res.status(401).json({ error: 'Invalid username or password' });
+            return;
+        }
+        
+        const user = result.rows[0];
 
-    const result = await pool.query(textQuery, [username]);
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    if (result.rows.length === 0) {
-        res.status(401).json({ error: 'Invalid username or password' });
-        return;
+        if (!isPasswordValid) {
+            res.status(401).json({ error: 'Invalid username or password' });
+            return;
+        }
+
+        const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+
+        // Strip password before sending user object to frontend
+        const { password: _, ...userWithoutPassword } = user;
+
+        res.json({ token, user: userWithoutPassword });
+    } catch (err: any) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
     }
-    
-    const user = result.rows[0];
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-        res.status(401).json({ error: 'Invalid username or password' });
-        return;
-    }
-
-    const token = jwt.sign({userId: user.id, email: user.email}, JWT_SECRET, {expiresIn: '1d'})
-
-    res.json({ token, userId: user.id, email: user.email });
-
-   
-} catch(err:any) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-}
-})
-
+});
 
 // GET habits
 
-app.get('/api/habits', async (req, res) => {
+app.get('/api/habits', authenticateToken, async (req, res) => {
 
-    try{
+        try {
+        const todayObj = new Date();
+        const today = todayObj.toISOString().split('T')[0] || '';
 
-       const todayObj = new Date();
-       const today = todayObj.toISOString().split('T')[0];
-
-       const yesterdayObj = new Date();
-       yesterdayObj.setDate(todayObj.getDate() - 1);
-       const yesterday = yesterdayObj.toISOString().split('T')[0];
-
+        const yesterdayObj = new Date();
+        yesterdayObj.setDate(todayObj.getDate() - 1);
+        const yesterday = yesterdayObj.toISOString().split('T')[0] || '';
 
         const userId = req.query.userId ? Number(req.query.userId) : undefined;
 
-        if (userId) {
-            const result = await pool.query('SELECT * FROM habits WHERE userid = $1', [userId]) 
+        if (!userId) {
+            res.status(200).json([]);
+            return;
+        }
 
-            for (let i = 0; i < result.rows.length; i++) {
-                let habit : Habit = result.rows[i];
-                let needsUpdate = false;
+        const result = await pool.query('SELECT * FROM habits WHERE userid = $1', [userId]);
 
-                const lastReset = habit.last_reset_date;
-                const lastCompleted = habit.last_completed_date;
+        for (let i = 0; i < result.rows.length; i++) {
+            let habit = result.rows[i];
+            let needsUpdate = false;
 
-               if (!lastReset || (today && lastReset < today)) {
-                habit.isComplete = false;
-                habit.last_reset_date = today;
-                
-                // Also ensure the JSONB metric completed flag resets to false!
-                if (habit.metric && habit.metric.kind === 'boolean') {
-                    habit.metric.completed = false;
-                }
-                
-                needsUpdate = true;
-}
-                if (lastCompleted && yesterday && lastCompleted < yesterday) {
-                    habit.streak = 0;
+            const lastReset = habit.last_reset_date;
+
+            const lastCompletedStr = habit.last_completed_date 
+                ? new Date(habit.last_completed_date).toISOString().split('T')[0] 
+                : null;
+
+            const isCompletedToday = lastCompletedStr === today;
+
+            if (!lastReset || lastReset < today) {
+                if (isCompletedToday) {
+                    habit.last_reset_date = today;
+                    if (habit.metric && habit.metric.kind === 'boolean') {
+                        habit.metric.completed = true;
+                    }
                     needsUpdate = true;
-                }
-
-                if (needsUpdate) {
-                    await pool.query(
-                        'UPDATE habits SET iscomplete = $1, last_reset_date = $2, streak = $3, metric = $4 WHERE id = $5',
-                        [habit.isComplete, habit.last_reset_date, habit.streak, JSON.stringify(habit.metric), habit.id]
-                    );
+                } else {
+                    habit.iscomplete = false;
+                    habit.last_reset_date = today;
+                    
+                    if (habit.metric && habit.metric.kind === 'boolean') {
+                        habit.metric.completed = false;
+                    } else if (habit.metric && habit.metric.kind === 'numeric') {
+                        habit.metric.current = 0; 
+                    } else if (habit.metric && habit.metric.kind === 'timer') {
+                        habit.metric.durationSeconds = 0; 
+                    }
+                    
+                    needsUpdate = true;
                 }
             }
 
-            res.status(200).json(result.rows);
-            return;
-    }
 
-    const result = await pool.query('SELECT * FROM habits');
-    res.status(200).json(result.rows);
+            if (lastCompletedStr && lastCompletedStr < yesterday) {
+                habit.streak = 0;
+                needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+                await pool.query(
+                    'UPDATE habits SET iscomplete = $1, last_reset_date = $2, streak = $3, metric = $4 WHERE id = $5',
+                    [habit.iscomplete, habit.last_reset_date, habit.streak, JSON.stringify(habit.metric), habit.id]
+                );
+            }
+
+            habit.isComplete = habit.iscomplete;
+        }
+
+        res.status(200).json(result.rows);
+ 
+  
 } catch(err:any) {
         console.error(err.message);
-    res.status(500).send('Server Error');
+        res.status(500).send('Server Error');
 }
 })
 
 // PATCH habits streak
 
-app.patch('/api/habits/:id', async (req, res) => {
+app.patch('/api/habits/:id', authenticateToken, async (req, res) => {
     try {
         const habitId = req.params.id;        
         const habitResult = await pool.query(`SELECT * FROM habits WHERE id = $1`, [habitId]);
@@ -244,9 +266,9 @@ app.patch('/api/habits/:id', async (req, res) => {
     }
 
     let updateResult = await pool.query(
-        'UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3, metric = $4 WHERE id = $5 RETURNING *',
-        [finalIsComplete, newStreak, newLastCompleted, JSON.stringify(updatedMetric), habitId]
-    )
+    'UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3, last_reset_date = $4, metric = $5 WHERE id = $6 RETURNING *',
+    [finalIsComplete, newStreak, newLastCompleted, today, JSON.stringify(updatedMetric), habitId]
+    );
 
     res.status(201).json(updateResult.rows[0])
 
@@ -258,7 +280,7 @@ app.patch('/api/habits/:id', async (req, res) => {
 
 // POST habits
 
-app.post('/api/habits', async (req, res) => {
+app.post('/api/habits', authenticateToken, async (req, res) => {
     try{
 
     const queryText = `
@@ -279,7 +301,7 @@ app.post('/api/habits', async (req, res) => {
 
 // PUT habits
 
-app.put('/api/habits/:id', async (req, res) => {
+app.put('/api/habits/:id', authenticateToken, async (req, res) => {
     try {
         const habitId = Number(req.params.id);
         const {title, category, streak, isComplete, metric} = req.body;
@@ -310,7 +332,7 @@ app.put('/api/habits/:id', async (req, res) => {
 
 // DELETE habits
 
-app.delete('/api/habits/:id', async (req, res) => {
+app.delete('/api/habits/:id', authenticateToken, async (req, res) => {
     try{
     const habitId = Number(req.params.id);
     
