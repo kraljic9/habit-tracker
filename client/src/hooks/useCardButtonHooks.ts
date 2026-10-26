@@ -49,7 +49,10 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
 
                 console.log("Current userId value:", userId, typeof userId);
 
-                if (!userId) return;
+                if (!userId) {
+                    setHabits([]);
+                    return;
+                }
 
                 const fetchHabits = async () => {
                     try{
