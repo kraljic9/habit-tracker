@@ -54,10 +54,10 @@ function Dashboard() {
     handleAddUser = async (newUser: User) => {
         try{
             const response = await axios.post('http://localhost:5000/api/register/user', newUser)
-            const registeredUser = response.data;
-
-            setCurrentUser(registeredUser)
-            setIsLogedIn(true)
+            const { token, user } = response.data;
+            localStorage.setItem('token', token);
+            setCurrentUser(user);
+            setIsLogedIn(true);
         }
         catch(err) {
             console.error("Registration failed", err);
@@ -67,8 +67,9 @@ function Dashboard() {
     const handleLoginUser = async (payload: LoginPayload) => {
         try{
             const response = await axios.post('http://localhost:5000/api/login/user', payload);
-            const user = response.data;
+            const { token, user } = response.data;
 
+            localStorage.setItem('token', token);
             setCurrentUser(user);
             setIsLogedIn(true);
         } catch (err){
