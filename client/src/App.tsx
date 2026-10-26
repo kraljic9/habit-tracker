@@ -5,7 +5,19 @@ import Dashboard from './components/Dashboard'
 import Analysis from './components/Analysis'
 import Community from './components/Community'
 import Settings from './components/Settings'
+import axios from 'axios'
 
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+
+  return config
+}, (error) => {
+  return Promise.reject(error);
+})
 
 function App() {
   return (
