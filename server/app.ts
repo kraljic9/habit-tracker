@@ -6,12 +6,14 @@ import jwt from 'jsonwebtoken';
 import 'dotenv/config'
 import pool from './db.ts'
 import { authenticateToken } from './auth.js';
+import analyticsRouter from './analytics.ts'
 
 const app = express();
 const PORT = 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/analytics', analyticsRouter)
 
 
 if (!process.env.JWT_SECRET) {
