@@ -74,7 +74,7 @@ export function useCardButtonHooks(userId?: number): CardButtonHooksReturn {
                     try {
                         const response = await axios.post('http://localhost:5000/api/habits', {
                             ...habitData,
-                            userId: userId // Attach the userId from the hook parameter
+                            userId: userId
                         });
                         setHabits(prev => [...prev, response.data]);
                     } catch (err) {
