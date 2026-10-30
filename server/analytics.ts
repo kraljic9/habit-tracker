@@ -72,8 +72,32 @@ router.get('/', authenticateToken, async (req, res) => {
         }
     }
 
+    const calculateWeeklyAvarage = async () => {
+        try {
+            const endDate = new Date();
+            const startDate = new Date();
+
+            startDate.setDate(endDate.getDate() - 6)
+
+            const isCompletedHabits = await pool.query(
+                'SELECT * FROM habits WHERE userid = $1 AND last_completed_date >= $2 AND last_completed_date <= $3',
+                [userId, startDate, endDate]
+            )
+
+            const possibleComplete = result.rows.length * 7
+            const weeklyScore = possibleComplete === 0 ? 0 : isCompletedHabits.rows.length / possibleComplete
+
+            return {weeklyScore}
+        } catch(err) {
+            console.log('Error occurred while calculating weekly avarage', err);
+            return {weeklyScore: 0}
+
+        }
+    }
+
         const { streakCount, largestStreak } = await calculateStreak();
         const { monthlyRate } = await calculateOverallComplete();
+        const { weeklyScore } = await calculateWeeklyAvarage();
 
         res.json({
             success: true,
@@ -81,6 +105,7 @@ router.get('/', authenticateToken, async (req, res) => {
             currentStreak: streakCount,
             largestStreak: largestStreak,
             monthlyRate: monthlyRate,
+            weeklyScore: weeklyScore,
         });
        
     } catch(err) {
