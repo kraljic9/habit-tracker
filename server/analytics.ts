@@ -3,7 +3,7 @@ import pool from './db.js';
 import { authenticateToken } from './auth.js';
 const router = express.Router();
 
-router.get('/', authenticateToken async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const userId = req.user?.userId;
       
