@@ -95,9 +95,31 @@ router.get('/', authenticateToken, async (req, res) => {
         }
     }
 
+    const fetchHeatmapData = async () => { 
+        try{
+        const startDate = new Date();
+        const endDate = new Date();
+
+        startDate.setDate(endDate.getDate() - 90);
+
+        const result = await pool.query(
+            'SELECT last_completed_date, COUNT(*) as completion_count FROM habits WHERE userid = $1 AND last_completed_date >= $2 AND last_completed_date <= $3 GROUP BY last_completed_date', [userId, startDate, endDate]
+        )
+
+        const completeAmount = result.rows;
+
+        return {completeAmount}
+        } catch(err) {
+            console.log('Error accured while fetching heatmap data', err)
+            return {completeAmount: 0}
+        } 
+    }
+
         const { streakCount, largestStreak } = await calculateStreak();
         const { monthlyRate } = await calculateOverallComplete();
         const { weeklyScore } = await calculateWeeklyAvarage();
+        const { completeAmount } = await fetchHeatmapData();
+
 
         res.json({
             success: true,
@@ -106,6 +128,7 @@ router.get('/', authenticateToken, async (req, res) => {
             largestStreak: largestStreak,
             monthlyRate: monthlyRate,
             weeklyScore: weeklyScore,
+            completeAmount: completeAmount
         });
        
     } catch(err) {
