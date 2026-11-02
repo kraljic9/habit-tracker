@@ -5,6 +5,7 @@ import type { User } from "../types";
 import axios from "axios";
 import OverallCompletionCard from "./Analysis/OverallCompletionCard";
 import StreakCard from "./Analysis/StreakCard";
+import WeeklyProgressCard from "./Analysis/WeeklyProgressCard";
 
 
 function Analysis() {
@@ -65,14 +66,23 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                     title="Analysis"
                 >
 
-                  <OverallCompletionCard
-                    monthlyRate={userAnalytics?.monthlyRate}
-                  />
-                  
-                  <StreakCard
-                    streakCount={userAnalytics?.streakCount}
-                    largestStreak={userAnalytics?.largestStrak}
-                  />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+
+                        <OverallCompletionCard
+                            monthlyRate={userAnalytics?.monthlyRate}
+                        />
+                        
+                        <StreakCard
+                            streakCount={userAnalytics?.streakCount}
+                            largestStreak={userAnalytics?.largestStrak}
+                        />
+
+                        <WeeklyProgressCard
+                            weeklyScore={userAnalytics?.weeklyScore}
+                        />
+
+                    </div>
+
 
 
                 </DashboardLayout>
