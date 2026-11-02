@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useCardButtonHooks } from "../hooks/useCardButtonHooks";
 import type { User } from "../types";
 import axios from "axios";
+import OverallCompletionCard from "./Analysis/OverallCompletionCard";
+
 
 function Analysis() {
 
@@ -11,7 +13,7 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
         return saved ? JSON.parse(saved) : null
     })
     
-    const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)  
+    const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)    
     
     const {habits, handleAddHabit} = useCardButtonHooks(
         currentUser?.id ? currentUser.id : undefined
@@ -20,6 +22,7 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const [userAnalytics, setUserAnalytics] = useState<any>(null); 
     const [loading, setLoading] = useState<boolean>(true);
 
+
     useEffect(() => {
         if (currentUser) {
             localStorage.setItem('currentUser', JSON.stringify(currentUser))
@@ -27,7 +30,7 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
             localStorage.removeItem('currentUser')
         }
     }, [currentUser])
-
+    
     useEffect(() => {
         const fetchAnalytics = async () => {
             if (!currentUser) return;
@@ -46,10 +49,10 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                 setLoading(false);
             }
         };
-
+        
         fetchAnalytics();
     }, [currentUser]);
-
+    
     return (
         <>
         <DashboardLayout 
@@ -60,7 +63,9 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                     handleAddHabit={handleAddHabit}
                     title="Analysis"
                 >
-                  <></>
+                  <OverallCompletionCard
+                    monthlyRate={userAnalytics?.monthlyRate}
+                  />
 
                 </DashboardLayout>
         </>
