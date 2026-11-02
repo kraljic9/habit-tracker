@@ -4,6 +4,7 @@ import { useCardButtonHooks } from "../hooks/useCardButtonHooks";
 import type { User } from "../types";
 import axios from "axios";
 import OverallCompletionCard from "./Analysis/OverallCompletionCard";
+import StreakCard from "./Analysis/StreakCard";
 
 
 function Analysis() {
@@ -63,9 +64,16 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                     handleAddHabit={handleAddHabit}
                     title="Analysis"
                 >
+
                   <OverallCompletionCard
                     monthlyRate={userAnalytics?.monthlyRate}
                   />
+                  
+                  <StreakCard
+                    streakCount={userAnalytics?.streakCount}
+                    largestStreak={userAnalytics?.largestStrak}
+                  />
+
 
                 </DashboardLayout>
         </>
