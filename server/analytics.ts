@@ -16,35 +16,70 @@ router.get('/', authenticateToken, async (req, res) => {
             [userId]
         );
 
+        console.log(result.rows) 
+
     const calculateStreak = async () => {
-            try {
-                let currentDate = new Date().toISOString().split('T')[0];
-                let streakCount = 0;  
+    try {
+        const result = await pool.query(
+            `SELECT DISTINCT last_completed_date::text 
+             FROM habits 
+             WHERE userid = $1 AND last_completed_date IS NOT NULL 
+             ORDER BY last_completed_date DESC`,
+            [userId]
+        );
 
-                while (true) {
-                    const streakResult = await pool.query(
-                        'SELECT * FROM habits WHERE userid = $1 AND last_completed_date = $2', 
-                        [userId, currentDate]
-                    );
 
-                    if (streakResult.rows.length > 0) {
-                        streakCount += 1;
+        const dates = result.rows.map(row => row.last_completed_date);
+        if (dates.length === 0) return { streakCount: 0, largestStreak: 0 };
 
-                        let dateObj = new Date(currentDate ?? new Date());
-                        dateObj.setDate(dateObj.getDate() - 1);
-                        currentDate = dateObj.toISOString().split('T')[0];
-                    } else {
-                        break;
-                    }
+        let currentStreak = 0;
+        let largestStreak = 0;
+        let tempStreak = 0;
+
+        const today = new Date().toLocaleDateString('en-CA');
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+        const startsTodayOrYesterday = dates[0] === today || dates[0] === yesterday;
+
+        for (let i = 0; i < dates.length; i++) {
+            if (i === 0) {
+                tempStreak = 1;
+            } else {
+                const prev = Number(new Date(dates[i - 1]));
+                const curr = Number(new Date(dates[i]));
+                const diffDays = Math.round((prev - curr) / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 1) {
+                    tempStreak++;
+                } else {
+                    largestStreak = Math.max(largestStreak, tempStreak);
+                    tempStreak = 1;
                 }
-
-                return { streakCount, largestStreak: streakCount };
-            } catch(err) {
-                console.log('Error occurred while calculating total streak', err);
-                return { streakCount: 0, largestStreak: 0 };
             }
-        };
+        }
+        largestStreak = Math.max(largestStreak, tempStreak);
 
+        if (!startsTodayOrYesterday) {
+            currentStreak = 0;
+        } else {
+            currentStreak = 1;
+            for (let i = 1; i < dates.length; i++) {
+                const prev = Number(new Date(dates[i - 1]));
+                const curr = Number(new Date(dates[i]));
+                const diffDays = Math.round((prev - curr) / (1000 * 60 * 60 * 24));
+                if (diffDays === 1) {
+                    currentStreak++;
+                } else {
+                    break;
+                }
+            }
+        }
+        return { streakCount: currentStreak, largestStreak };
+    } catch (err) {
+        console.error('Error calculating streak', err);
+        return { streakCount: 0, largestStreak: 0 };
+    }
+};
 
     const calculateOverallComplete = async () => {
         try{
@@ -63,7 +98,7 @@ router.get('/', authenticateToken, async (req, res) => {
             )
 
             const totalPossible = result.rows.length * daysInMonth;
-            const monthlyRate = totalPossible === 0 ? 0 : (isCompletedHabits.rows.length / totalPossible) * 100;
+            let monthlyRate = totalPossible === 0 ? 0 : (isCompletedHabits.rows.length / totalPossible) * 100;
 
             return {monthlyRate}
         } catch (err) {
@@ -115,11 +150,58 @@ router.get('/', authenticateToken, async (req, res) => {
         } 
     }
 
+        const habitBrakeDown = async () => {
+    try {
+        let healthStreak = 0;
+        let codingStreak = 0;
+        let fitnessStreak = 0;
+        let mindfulnessStreak = 0;
+
+        // Flags to ensure we only add +1 *once per category* per day   
+        let healthCounted = false;
+        let codingCounted = false;
+        let fitnessCounted = false;
+        let mindfulnessCounted = false;
+        
+        const today = new Date().toLocaleString('en-CA');
+
+        result.rows.forEach((habit) => {
+            
+            if (!habit.last_completed_date) return
+
+            const completedDateString = new Date(habit.last_completed_date).toLocaleString('en-CA');
+
+            if (completedDateString === today) {
+                if (habit.category === 'Health' && !healthCounted) {
+                    healthStreak += 1;
+                    healthCounted = true
+                } else if (habit.category === 'Coding' && !codingCounted) {
+                    codingStreak += 1;
+                    codingCounted = true;
+                } else if (habit.category === 'Fitness' && !fitnessCounted) {
+                    fitnessStreak += 1;
+                    fitnessCounted = true;
+                } else if (habit.category === 'Mindfulness' && !mindfulnessCounted) {
+                    mindfulnessStreak += 1;
+                    mindfulnessCounted = true;
+                }
+            }
+        })
+
+        return { healthStreak, codingStreak, fitnessStreak, mindfulnessStreak };
+
+    } catch (err) {
+        console.log('Error occurred while calculating habit breakdown', err);
+        return { healthStreak: 0, codingStreak: 0, fitnessStreak: 0, mindfulnessStreak: 0 };
+    }
+};
+    
+ 
         const { streakCount, largestStreak } = await calculateStreak();
         const { monthlyRate } = await calculateOverallComplete();
         const { weeklyScore } = await calculateWeeklyAvarage();
         const { completeAmount } = await fetchHeatmapData();
-
+        const { healthStreak, codingStreak, fitnessStreak, mindfulnessStreak } = await habitBrakeDown();
 
         res.json({
             success: true,
@@ -128,7 +210,11 @@ router.get('/', authenticateToken, async (req, res) => {
             largestStreak: largestStreak,
             monthlyRate: monthlyRate,
             weeklyScore: weeklyScore,
-            completeAmount: completeAmount
+            completeAmount: completeAmount,
+            healthStreak: healthStreak,
+            codingStreak: codingStreak,
+            fitnessStreak: fitnessStreak,
+            mindfulnessStreak: mindfulnessStreak
         });
        
     } catch(err) {

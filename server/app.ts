@@ -191,7 +191,7 @@ app.patch('/api/habits/:id', authenticateToken, async (req, res) => {
         }
     
         const habit = habitResult.rows[0] as Habit;
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');;
 
         let newStreak = Number(habit.streak);
         let newLastCompleted = habit.last_completed_date;
