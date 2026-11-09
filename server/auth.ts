@@ -16,6 +16,8 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
+    console.log("Extracted Token:", token);
+
     if (!token) {
         res.status(401).json({ error: 'Access token missing' });
         return;
