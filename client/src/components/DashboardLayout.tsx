@@ -49,7 +49,7 @@ export function DashboardLayout({
 
     const handleAddUser = async (newUser: User) => {
         try {
-            const response = await axios.post('http://localhost:5000/api/register/user', newUser);
+            const response = await axios.post('/api/register/user', newUser);
             const { token, user } = response.data;
             localStorage.setItem('token', token);
             setCurrentUser(user);
