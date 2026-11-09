@@ -31,8 +31,6 @@ export default function ConsistencyHeatmap({completeAmount} : ConsistencyHeatmap
   
     const completionMap: any = {};
     
-    console.log(completeAmount)
-
     completeAmount?.forEach((item) => {
         const dateKey = item.last_completed_date.split('T')[0];
         completionMap[dateKey] = Number(item.completion_count);
