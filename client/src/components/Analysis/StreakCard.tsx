@@ -16,7 +16,7 @@ export default function StreakCard({ streakCount, largestStreak }: StreakCardPro
             </div>
 
             <p className="text-sm text-slate-400">
-                Current: <span className="text-orange-300">
+                Highscore: <span className="text-orange-300">
                     {streakCount === 0 ? 0 : streakCount} {streakCount === 1 ? 'day' : 'days'}
                 </span>
             </p>
