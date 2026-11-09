@@ -6,7 +6,8 @@ import axios from "axios";
 import OverallCompletionCard from "./Analysis/OverallCompletionCard";
 import StreakCard from "./Analysis/StreakCard";
 import WeeklyProgressCard from "./Analysis/WeeklyProgressCard";
-
+import ConsistencyHeatmap from "./Analysis/ConsistencyHeatmap";
+import HabitBrakedown from "./Analysis/HabitBreakdown";
 
 function Analysis() {
 
@@ -54,7 +55,19 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
         
         fetchAnalytics();
     }, [currentUser]);
-    
+            
+        console.log('Habits:', userAnalytics?.habits) 
+        console.log('Current streak:', userAnalytics?.currentStreak,
+             'Largest streak:', userAnalytics?.largestStreak) 
+        console.log('Monthly rate:', userAnalytics?.monthlyRate) 
+        console.log('Weekly score:', userAnalytics?.weeklyScore)
+        console.log('Heat map complete amount:', userAnalytics?.completeAmount) 
+        console.log('Health', userAnalytics?.healthStreak,
+            'Coding', userAnalytics?.codingStreak,
+            'Fitness', userAnalytics?.fitnessStreak,
+            'Mindfulness', userAnalytics?.mindfulnessStreak
+        )
+
     return (
         <>
         <DashboardLayout 
@@ -74,11 +87,23 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                         
                         <StreakCard
                             streakCount={userAnalytics?.streakCount}
-                            largestStreak={userAnalytics?.largestStrak}
+                            largestStreak={userAnalytics?.largestStreak}
                         />
 
                         <WeeklyProgressCard
                             weeklyScore={userAnalytics?.weeklyScore}
+                        />
+
+                        <ConsistencyHeatmap
+                            completeAmount={userAnalytics?.completeAmount}
+                        />
+
+                        <HabitBrakedown 
+                            healthStreak={userAnalytics?.healthStreak} 
+                            codingStreak={userAnalytics?.codingStreak}
+                            fitnessStreak={userAnalytics?.fitnessStreak} 
+                            mindfulnessStreak={userAnalytics?.mindfulnessStreak}
+                            habits={habits}
                         />
 
                     </div>
