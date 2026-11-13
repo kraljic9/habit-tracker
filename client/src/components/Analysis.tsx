@@ -8,6 +8,7 @@ import StreakCard from "./Analysis/StreakCard";
 import WeeklyProgressCard from "./Analysis/WeeklyProgressCard";
 import ConsistencyHeatmap from "./Analysis/ConsistencyHeatmap";
 import HabitBrakedown from "./Analysis/HabitBreakdown";
+import MonthlyCompletionChart from "./Analysis/MonthlyCompletionChart";
 
 function Analysis() {
 
@@ -105,6 +106,8 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                             mindfulnessStreak={userAnalytics?.mindfulnessStreak}
                             habits={habits}
                         />
+
+                        <MonthlyCompletionChart/>
 
                     </div>
 

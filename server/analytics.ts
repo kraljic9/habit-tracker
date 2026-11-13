@@ -195,8 +195,7 @@ router.get('/', authenticateToken, async (req, res) => {
         return { healthStreak: 0, codingStreak: 0, fitnessStreak: 0, mindfulnessStreak: 0 };
     }
 };
-    
- 
+
         const { streakCount, largestStreak } = await calculateStreak();
         const { monthlyRate } = await calculateOverallComplete();
         const { weeklyScore } = await calculateWeeklyAvarage();
@@ -222,7 +221,31 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
+router.get('/month', authenticateToken, async (req, res) => {
+    try {
+        const month : any = req.params.month;
 
+        const [year, monthPart] = month.split('-');
+
+        const daysInMonth = new Date(Number(year), Number(monthPart), 0).getDate();
+
+        let startDate = `${year}-${monthPart}-01`
+        let finalDate = `${year}-${monthPart}-${daysInMonth}`
+   
+        const result = await pool.query(
+            `SELECT habit_logs.*, habits.category 
+            FROM habit_logs 
+            JOIN habits ON habit_logs.habit_id = habits.id 
+            WHERE habit_logs.completed_date >= $1 AND habit_logs.completed_date <= $2`,
+            [startDate, finalDate]
+        );
+
+    
+    } catch (err: any) {
+        console.error("Analytics Error:", err.message);
+        res.status(500).send('Server Error');
+    }
+});
 
 
 
