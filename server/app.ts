@@ -22,7 +22,7 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Register user
+
 
 // Register user
 app.post('/api/register/user', async (req, res) => {
@@ -201,17 +201,27 @@ app.patch('/api/habits/:id', authenticateToken, async (req, res) => {
         let finalIsComplete = false;
         let updatedMetric: any = habit.metric;
 
+        const addRowTxt = `
+                INSERT INTO habit_logs (habit_id, completed_date) VALUES ($1, $2);
+            `
+
+        const removeRowTxt = `
+                DELETE FROM habit_logs WHERE habit_id = $1 AND completed_date = $2
+        `
+
+        const values = [habitId, today]
+
         if (habit.metric.kind === 'boolean') {
-                
             const { isComplete: incomingIsComplete } = req.body; // boolean from frontend
             finalIsComplete = incomingIsComplete 
-
-        if (finalIsComplete && !wasCompleted) {
-            newStreak += 1;
-            newLastCompleted = today;
+            if (finalIsComplete && !wasCompleted) {
+                newStreak += 1;
+                newLastCompleted = today;
+                await pool.query(addRowTxt, values)
         } else if (!finalIsComplete && wasCompleted) {
             newStreak = Math.max(0, newStreak - 1);
             newLastCompleted = null;
+            await pool.query(removeRowTxt, values)
         }
         
         updatedMetric = {
@@ -231,9 +241,11 @@ app.patch('/api/habits/:id', authenticateToken, async (req, res) => {
         if (finalIsComplete && !wasCompleted) {
             newStreak += 1;
             newLastCompleted = today
+            await pool.query(addRowTxt, values);
         } else if (!finalIsComplete && wasCompleted) {
             newStreak = Math.max(0, newStreak - 1);
             newLastCompleted = null;
+            await pool.query(removeRowTxt, values);
         }
 
         updatedMetric = {
@@ -255,9 +267,11 @@ app.patch('/api/habits/:id', authenticateToken, async (req, res) => {
         if (finalIsComplete && !wasCompleted) {
             newStreak += 1;
             newLastCompleted = today;
+            await pool.query(addRowTxt, values);
         } else if (!finalIsComplete && wasCompleted) {
             newStreak = Math.max(0, newStreak - 1);
             newLastCompleted = null;
+            await pool.query(removeRowTxt, values);
         }
     
         updatedMetric = {
