@@ -57,17 +57,7 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
         fetchAnalytics();
     }, [currentUser]);
             
-        console.log('Habits:', userAnalytics?.habits) 
-        console.log('Current streak:', userAnalytics?.currentStreak,
-             'Largest streak:', userAnalytics?.largestStreak) 
-        console.log('Monthly rate:', userAnalytics?.monthlyRate) 
-        console.log('Weekly score:', userAnalytics?.weeklyScore)
-        console.log('Heat map complete amount:', userAnalytics?.completeAmount) 
-        console.log('Health', userAnalytics?.healthStreak,
-            'Coding', userAnalytics?.codingStreak,
-            'Fitness', userAnalytics?.fitnessStreak,
-            'Mindfulness', userAnalytics?.mindfulnessStreak
-        )
+       
 
     return (
         <>
