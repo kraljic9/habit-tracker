@@ -223,24 +223,93 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.get('/month', authenticateToken, async (req, res) => {
     try {
-        const month : any = req.params.month;
+       const month : any = req.params.month;
 
-        const [year, monthPart] = month.split('-');
+       const [year, thisMonth] = month.split('-');
 
-        const daysInMonth = new Date(Number(year), Number(monthPart), 0).getDate();
+       const daysInMonth = new Date(Number(year), Number(thisMonth), 0).getDate();
 
-        let startDate = `${year}-${monthPart}-01`
-        let finalDate = `${year}-${monthPart}-${daysInMonth}`
-   
-        const result = await pool.query(
-            `SELECT habit_logs.*, habits.category 
-            FROM habit_logs 
-            JOIN habits ON habit_logs.habit_id = habits.id 
-            WHERE habit_logs.completed_date >= $1 AND habit_logs.completed_date <= $2`,
-            [startDate, finalDate]
-        );
+       const startDate = `${year}-${thisMonth}-01`;
+       const endDate = `${year}-${thisMonth}-${daysInMonth}`
 
-    
+       const result = await pool.query(
+        `SELECT habit_logs.*, habits.category
+         FROM habit_logs
+         JOIN habits ON habit_logs.habit_id = habits.id
+         WHERE habit_logs.completed_date >= $1 AND habit_logs.completed_date <= $2
+        `, [startDate, endDate]
+       )
+
+       const totalHabit = await pool.query(
+        `SELECT * FROM habits`
+       )
+
+       if (result.rows.length === 0 ) {
+            console.error('Error results row for category moth status is empty')
+        }
+
+        let healthHabits = 0;
+        let fitnessHabits = 0;
+        let codingHabits = 0;
+        let mindfulnessHabits = 0;
+
+        totalHabit.rows.map((habit) => {
+              if (habit.category === 'Health') {
+                healthHabits++
+            }
+
+            if (habit.category === 'Coding') {
+                codingHabits++
+            }
+
+            if (habit.category === 'Fitness') {
+                fitnessHabits++
+            }
+
+            if (habit.category === 'Mindfulness') {
+                mindfulnessHabits++
+        }
+    })
+
+        let analyticsData : any= {}
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            let dateString = `${year}-${thisMonth}-${String(i).padStart(2, '0')}`
+
+            analyticsData[dateString] = {
+                Health: 0,
+                Fitness: 0,
+                Coding: 0,
+                Mindfulness: 0
+            }
+        }
+
+       result.rows.forEach((habit) => {
+            const rowDate = habit.completed_date.toISOString().split('T')[0];
+            const category = habit.category;
+
+            if (analyticsData[rowDate] && analyticsData[rowDate][category] !== undefined) {
+                analyticsData[rowDate][category]++;
+            }
+        });
+
+        Object.keys(analyticsData).forEach((date) => {
+            if (healthHabits > 0) {
+                analyticsData[date]['Health'] = (analyticsData[date]['Health'] / healthHabits) * 100;
+            }
+            if (codingHabits > 0) {
+                analyticsData[date]['Coding'] = (analyticsData[date]['Coding'] / codingHabits) * 100;
+            }
+            if (fitnessHabits > 0) {
+                analyticsData[date]['Fitness'] = (analyticsData[date]['Fitness'] / fitnessHabits) * 100;
+            }
+            if (mindfulnessHabits > 0) {
+                analyticsData[date]['Mindfulness'] = (analyticsData[date]['Mindfulness'] / mindfulnessHabits) * 100;
+            }
+        });
+
+        res.status(200).json(analyticsData)
+
     } catch (err: any) {
         console.error("Analytics Error:", err.message);
         res.status(500).send('Server Error');
