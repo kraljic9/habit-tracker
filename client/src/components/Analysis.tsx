@@ -10,6 +10,7 @@ import ConsistencyHeatmap from "./Analysis/ConsistencyHeatmap";
 import HabitBrakedown from "./Analysis/HabitBreakdown";
 import MonthlyCompletionChart from "./Analysis/MonthlyCompletionChart";
 
+
 function Analysis() {
 
 const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -53,59 +54,62 @@ const [currentUser, setCurrentUser] = useState<User | null>(() => {
                 setLoading(false);
             }
         };
+
         
         fetchAnalytics();
     }, [currentUser]);
-            
-       
+    
+console.log(userAnalytics)
 
     return (
-        <>
-        <DashboardLayout 
-                    currentUser={currentUser} 
-                    setCurrentUser={setCurrentUser} 
-                    isLogedIn={isLogedIn} 
-                    setIsLogedIn={setIsLogedIn}
-                    handleAddHabit={handleAddHabit}
-                    title="Analysis"
-                >
+    <DashboardLayout 
+        currentUser={currentUser} 
+        setCurrentUser={setCurrentUser} 
+        isLogedIn={isLogedIn} 
+        setIsLogedIn={setIsLogedIn}
+        handleAddHabit={handleAddHabit}
+        title="Analysis"
+    >
+        {/* Top Row: 3 Equal KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <OverallCompletionCard
+                monthlyRate={userAnalytics?.monthlyRate}
+            />
+            
+            <StreakCard
+                streakCount={userAnalytics?.currentStreak}
+                largestStreak={userAnalytics?.largestStreak}
+            />
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <WeeklyProgressCard
+                weeklyScore={userAnalytics?.weeklyScore}
+            />
+        </div>
 
-                        <OverallCompletionCard
-                            monthlyRate={userAnalytics?.monthlyRate}
-                        />
-                        
-                        <StreakCard
-                            streakCount={userAnalytics?.streakCount}
-                            largestStreak={userAnalytics?.largestStreak}
-                        />
+        {/* Bottom Row: 2/3 Chart on Left, 1/3 Stacked Cards on Right */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Side: Spans 2 columns */}
+            <div className="lg:col-span-2">
+                <MonthlyCompletionChart />
+            </div>
 
-                        <WeeklyProgressCard
-                            weeklyScore={userAnalytics?.weeklyScore}
-                        />
+            {/* Right Side: Spans 1 column, stacked vertically */}
+            <div className="flex flex-col gap-6">
+                <ConsistencyHeatmap
+                    completeAmount={userAnalytics?.completeAmount}
+                />
 
-                        <ConsistencyHeatmap
-                            completeAmount={userAnalytics?.completeAmount}
-                        />
-
-                        <HabitBrakedown 
-                            healthStreak={userAnalytics?.healthStreak} 
-                            codingStreak={userAnalytics?.codingStreak}
-                            fitnessStreak={userAnalytics?.fitnessStreak} 
-                            mindfulnessStreak={userAnalytics?.mindfulnessStreak}
-                            habits={habits}
-                        />
-
-                        <MonthlyCompletionChart/>
-
-                    </div>
-
-
-
-                </DashboardLayout>
-        </>
-    )
+                <HabitBrakedown 
+                    healthStreak={userAnalytics?.healthStreak} 
+                    codingStreak={userAnalytics?.codingStreak}
+                    fitnessStreak={userAnalytics?.fitnessStreak} 
+                    mindfulnessStreak={userAnalytics?.mindfulnessStreak}
+                    habits={habits}
+                />
+            </div>
+        </div>
+    </DashboardLayout>
+);
 }
 
 export default Analysis
