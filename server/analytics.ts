@@ -16,7 +16,6 @@ router.get('/', authenticateToken, async (req, res) => {
             [userId]
         );
 
-        console.log(result.rows) 
 
     const calculateStreak = async () => {
     try {
@@ -221,9 +220,12 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-router.get('/month', authenticateToken, async (req, res) => {
+router.get('/:month', authenticateToken, async (req, res) => {
     try {
        const month : any = req.params.month;
+       
+       const userId = req.user?.userId;
+       console.log(req.user?.userId)
 
        const [year, thisMonth] = month.split('-');
 
@@ -233,16 +235,19 @@ router.get('/month', authenticateToken, async (req, res) => {
        const endDate = `${year}-${thisMonth}-${daysInMonth}`
 
        const result = await pool.query(
-        `SELECT habit_logs.*, habits.category
-         FROM habit_logs
-         JOIN habits ON habit_logs.habit_id = habits.id
-         WHERE habit_logs.completed_date >= $1 AND habit_logs.completed_date <= $2
-        `, [startDate, endDate]
-       )
+            `SELECT habit_logs.*, habits.category
+            FROM habit_logs
+            JOIN habits ON habit_logs.habit_id = habits.id
+            WHERE habit_logs.completed_date >= $1 
+            AND habit_logs.completed_date <= $2
+            AND habits.userid = $3`,
+            [startDate, endDate, userId]
+        );
 
-       const totalHabit = await pool.query(
-        `SELECT * FROM habits`
-       )
+        const totalHabit = await pool.query(
+            `SELECT * FROM habits WHERE userid = $1`,
+            [userId]
+        );
 
        if (result.rows.length === 0 ) {
             console.error('Error results row for category moth status is empty')
@@ -283,6 +288,9 @@ router.get('/month', authenticateToken, async (req, res) => {
                 Mindfulness: 0
             }
         }
+
+        console.log('Health:',healthHabits)
+        console.log('Coding:', codingHabits)
 
        result.rows.forEach((habit) => {
             const rowDate = habit.completed_date.toISOString().split('T')[0];
