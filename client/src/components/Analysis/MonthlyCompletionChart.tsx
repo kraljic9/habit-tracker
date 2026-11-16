@@ -17,7 +17,7 @@ export default function MonthlyCompletionChart() {
         const fetchMonthlyData = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get(`/api/analytics/${currentMonth}`, {
+                const response = await axios.get(`http://localhost:5000/api/analytics/${currentMonth}`, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -29,9 +29,11 @@ export default function MonthlyCompletionChart() {
             }
         };
 
+        
         fetchMonthlyData();
     }, [currentMonth]); 
-
+    
+    console.log(monthlyData)
     return (
         <>
         </>
