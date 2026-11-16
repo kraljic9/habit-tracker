@@ -35,8 +35,8 @@ export default function HabitBrakedown({
 
                         {/* Streak count & Progress Bar */}
                         <div className="flex items-center space-x-4">
-                            <span className="text-slate-300 font-medium flex items-center gap-1">
-                                🔥 {cat.streak} Days
+                            <span className="text-slate-300 font-medium flex items-center gap-1 w-20 tabular-nums">
+                                🔥 {cat.streak} {cat.streak === 1 ? 'Day' : 'Days'}
                             </span>
 
                             <div className="w-24 bg-slate-700/60 rounded-full h-2 overflow-hidden">
