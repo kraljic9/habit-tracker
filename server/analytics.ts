@@ -156,36 +156,35 @@ router.get('/', authenticateToken, async (req, res) => {
         let fitnessStreak = 0;
         let mindfulnessStreak = 0;
 
-        // Flags to ensure we only add +1 *once per category* per day   
-        let healthCounted = false;
-        let codingCounted = false;
-        let fitnessCounted = false;
-        let mindfulnessCounted = false;
-        
-        const today = new Date().toLocaleString('en-CA');
+        let today = new Date();
+        let yesterday = new Date();
+
+        yesterday.setDate(today.getDate() - 1)
+
+        let todayStr = today.toLocaleDateString('en-CA');
+        let yesterdayStr = yesterday.toLocaleDateString('en-CA');
 
         result.rows.forEach((habit) => {
-            
-            if (!habit.last_completed_date) return
 
-            const completedDateString = new Date(habit.last_completed_date).toLocaleString('en-CA');
+            if (!habit.last_completed_date) return;
 
-            if (completedDateString === today) {
-                if (habit.category === 'Health' && !healthCounted) {
-                    healthStreak += 1;
-                    healthCounted = true
-                } else if (habit.category === 'Coding' && !codingCounted) {
-                    codingStreak += 1;
-                    codingCounted = true;
-                } else if (habit.category === 'Fitness' && !fitnessCounted) {
-                    fitnessStreak += 1;
-                    fitnessCounted = true;
-                } else if (habit.category === 'Mindfulness' && !mindfulnessCounted) {
-                    mindfulnessStreak += 1;
-                    mindfulnessCounted = true;
-                }
+            let completedStr = new Date(habit.last_completed_date).toLocaleDateString('en-CA');
+
+            const isActiveStreak = completedStr === todayStr || completedStr === yesterdayStr;
+            const streak = isActiveStreak ? (habit.streak || 0) : 0;
+
+            if (habit.category === 'Health') {
+                healthStreak = Math.max(healthStreak, streak)
+            } else if (habit.category === 'Coding') {
+                codingStreak = Math.max(codingStreak, streak)
+            } else if (habit.category === 'Fitness') {
+                fitnessStreak = Math.max(fitnessStreak, streak)
+            } else if (habit.category === 'Mindfulness') {
+                mindfulnessStreak = Math.max(mindfulnessStreak, streak)
             }
         })
+
+        console.log(healthStreak, codingStreak, fitnessStreak, mindfulnessStreak)
 
         return { healthStreak, codingStreak, fitnessStreak, mindfulnessStreak };
 
@@ -303,16 +302,16 @@ router.get('/:month', authenticateToken, async (req, res) => {
 
         Object.keys(analyticsData).forEach((date) => {
             if (healthHabits > 0) {
-                analyticsData[date]['Health'] = (analyticsData[date]['Health'] / healthHabits) * 100;
+                analyticsData[date]['Health'] = Number(((analyticsData[date]['Health'] / healthHabits) * 100).toFixed(1));
             }
             if (codingHabits > 0) {
-                analyticsData[date]['Coding'] = (analyticsData[date]['Coding'] / codingHabits) * 100;
+                analyticsData[date]['Coding'] = Number(((analyticsData[date]['Coding'] / codingHabits) * 100).toFixed(1));
             }
             if (fitnessHabits > 0) {
-                analyticsData[date]['Fitness'] = (analyticsData[date]['Fitness'] / fitnessHabits) * 100;
+                analyticsData[date]['Fitness'] = Number(((analyticsData[date]['Fitness'] / fitnessHabits) * 100).toFixed(1));
             }
             if (mindfulnessHabits > 0) {
-                analyticsData[date]['Mindfulness'] = (analyticsData[date]['Mindfulness'] / mindfulnessHabits) * 100;
+                analyticsData[date]['Mindfulness'] = Number(((analyticsData[date]['Mindfulness'] / mindfulnessHabits) * 100).toFixed(1));
             }
         });
 
