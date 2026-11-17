@@ -19,16 +19,24 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const calculateStreak = async () => {
     try {
-        const result = await pool.query(
-            `SELECT DISTINCT last_completed_date::text 
-             FROM habits 
-             WHERE userid = $1 AND last_completed_date IS NOT NULL 
-             ORDER BY last_completed_date DESC`,
+       const result = await pool.query(
+            `SELECT habit_logs.completed_date
+            FROM habit_logs
+            JOIN habits ON habit_logs.habit_id = habits.id
+            WHERE habits.userid = $1 AND habit_logs.completed_date IS NOT NULL
+            ORDER BY habit_logs.completed_date DESC`,
             [userId]
         );
 
 
-        const dates = result.rows.map(row => row.last_completed_date);
+        const dates : any = [
+            ...new Set(
+                result.rows.map(row =>
+                    new Date(row.completed_date).toLocaleDateString('en-CA')
+                )
+            ),  
+        ];
+
         if (dates.length === 0) return { streakCount: 0, largestStreak: 0 };
 
         let currentStreak = 0;
@@ -36,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
         let tempStreak = 0;
 
         const today = new Date().toLocaleDateString('en-CA');
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
 
         const startsTodayOrYesterday = dates[0] === today || dates[0] === yesterday;
 
@@ -112,14 +120,26 @@ router.get('/', authenticateToken, async (req, res) => {
             const startDate = new Date();
 
             startDate.setDate(endDate.getDate() - 6)
+            startDate.setHours(0, 0, 0, 0)
 
-            const isCompletedHabits = await pool.query(
-                'SELECT * FROM habits WHERE userid = $1 AND last_completed_date >= $2 AND last_completed_date <= $3',
-                [userId, startDate, endDate]
+            const logsResult = await pool.query(
+                `SELECT COUNT(*) FROM habit_logs
+                 JOIN habits ON habit_logs.habit_id = habits.id
+                 WHERE habits.userid = $1 AND habit_logs.completed_date >= $2 AND habit_logs.completed_date  <= $3`,
+                 [userId, startDate, endDate]
             )
 
-            const possibleComplete = result.rows.length * 7
-            const weeklyScore = possibleComplete === 0 ? 0 : isCompletedHabits.rows.length / possibleComplete
+            const habitsResult = await pool.query(
+                `SELECT COUNT (*) from habits WHERE userid = $1`,
+                [userId]
+            )
+
+            const completedCount = Number(logsResult.rows[0].count);
+            const totalHabits = Number(habitsResult.rows[0].count);
+
+            const weeklyScore = totalHabits === 0 
+            ? 0 
+            : Number((completedCount / totalHabits).toFixed(1));
 
             return {weeklyScore}
         } catch(err) {
@@ -184,7 +204,6 @@ router.get('/', authenticateToken, async (req, res) => {
             }
         })
 
-        console.log(healthStreak, codingStreak, fitnessStreak, mindfulnessStreak)
 
         return { healthStreak, codingStreak, fitnessStreak, mindfulnessStreak };
 
@@ -224,11 +243,12 @@ router.get('/:month', authenticateToken, async (req, res) => {
        const month : any = req.params.month;
        
        const userId = req.user?.userId;
-       console.log(req.user?.userId)
-
+      
        const [year, thisMonth] = month.split('-');
 
        const daysInMonth = new Date(Number(year), Number(thisMonth), 0).getDate();
+
+        console.log(daysInMonth)
 
        const startDate = `${year}-${thisMonth}-01`;
        const endDate = `${year}-${thisMonth}-${daysInMonth}`
@@ -286,21 +306,22 @@ router.get('/:month', authenticateToken, async (req, res) => {
                 Coding: 0,
                 Mindfulness: 0
             }
+
+            
         }
 
-        console.log('Health:',healthHabits)
-        console.log('Coding:', codingHabits)
-
        result.rows.forEach((habit) => {
-            const rowDate = habit.completed_date.toISOString().split('T')[0];
+            const rowDate = habit.completed_date.toLocaleDateString('en-CA');
             const category = habit.category;
 
+            
             if (analyticsData[rowDate] && analyticsData[rowDate][category] !== undefined) {
                 analyticsData[rowDate][category]++;
             }
         });
 
         Object.keys(analyticsData).forEach((date) => {
+
             if (healthHabits > 0) {
                 analyticsData[date]['Health'] = Number(((analyticsData[date]['Health'] / healthHabits) * 100).toFixed(1));
             }
@@ -313,7 +334,9 @@ router.get('/:month', authenticateToken, async (req, res) => {
             if (mindfulnessHabits > 0) {
                 analyticsData[date]['Mindfulness'] = Number(((analyticsData[date]['Mindfulness'] / mindfulnessHabits) * 100).toFixed(1));
             }
+
         });
+    
 
         res.status(200).json(analyticsData)
 
