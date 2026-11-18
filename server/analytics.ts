@@ -92,20 +92,36 @@ router.get('/', authenticateToken, async (req, res) => {
         try{
             const now = new Date();
             const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const month = now.getMonth();
 
-            const daysInMonth = new Date(year, now.getMonth() + 1, 0).getDate();
+            const startDate = new Date(year, month, 1, 0, 0, 0, 0,)
+            const endDate = new Date(year, month + 1, 0, 23, 59, 59, 999)
+            const daysInMonth = endDate.getDate();
 
-            const startDate = `${year}-${month}-01`;
-            const endDate = `${year}-${month}-${daysInMonth}`;
+            const [logsResult, habitsResult] = await Promise.all([
+                pool.query(
+                    `SELECT COUNT(*) FROM habit_logs
+                     JOIN habits ON habit_logs.habit_id = habits.id
+                     WHERE habit_logs.completed_date >= $1 AND
+                     habit_logs.completed_date <= $2 AND
+                     habits.userid = $3
+                    `,
+                    [startDate, endDate, userId]
+                ),
 
-            const isCompletedHabits = await pool.query(
-                'SELECT * FROM habits WHERE userid = $1 AND last_completed_date >= $2 AND last_completed_date <= $3',
-                [userId, startDate, endDate]
-            )
+                pool.query(
+                    `SELECT COUNT(*) FROM habits
+                    WHERE userid = $1
+                    `,
+                    [userId]
+                )
+            ])
 
-            const totalPossible = result.rows.length * daysInMonth;
-            let monthlyRate = totalPossible === 0 ? 0 : (isCompletedHabits.rows.length / totalPossible) * 100;
+            const completedCount = Number(logsResult.rows[0].count)
+            const totalHabits = Number(habitsResult.rows[0].count)
+
+            const totalPossible = totalHabits * daysInMonth;
+            const monthlyRate = totalHabits === 0 ? 0 : Math.round((completedCount / totalPossible) * 100)
 
             return {monthlyRate}
         } catch (err) {
