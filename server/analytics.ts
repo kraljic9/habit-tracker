@@ -206,41 +206,59 @@ router.get('/', authenticateToken, async (req, res) => {
 
         const habitBrakeDown = async () => {
     try {
-        let healthStreak = 0;
-        let codingStreak = 0;
-        let fitnessStreak = 0;
-        let mindfulnessStreak = 0;
+        
 
-        let today = new Date();
-        let yesterday = new Date();
+        const completedHabits = await pool.query(
+            `SELECT habit_logs.completed_date, habits.category
+             FROM habit_logs
+             JOIN habits ON habit_logs.habit_id = habits.id
+             WHERE habits.userid = $1`,
+            [userId]
+        );
 
-        yesterday.setDate(today.getDate() - 1)
+        const categoryDates: any = {
+                Health: new Set<string>(),
+                Coding: new Set<string>(),
+                Fitness: new Set<string>(),
+                Mindfulness: new Set<string>(),
+        };
 
-        let todayStr = today.toLocaleDateString('en-CA');
-        let yesterdayStr = yesterday.toLocaleDateString('en-CA');
+        completedHabits.rows.forEach((row) => {
+            const targetSet = categoryDates[row.category];
+            if (!row.completed_date || !targetSet) return;
+            if (!row.completed_date || !categoryDates[row.category]) return;
 
-        result.rows.forEach((habit) => {
-
-            if (!habit.last_completed_date) return;
-
-            let completedStr = new Date(habit.last_completed_date).toLocaleDateString('en-CA');
-
-            const isActiveStreak = completedStr === todayStr || completedStr === yesterdayStr;
-            const streak = isActiveStreak ? (habit.streak || 0) : 0;
-
-            if (habit.category === 'Health') {
-                healthStreak = Math.max(healthStreak, streak)
-            } else if (habit.category === 'Coding') {
-                codingStreak = Math.max(codingStreak, streak)
-            } else if (habit.category === 'Fitness') {
-                fitnessStreak = Math.max(fitnessStreak, streak)
-            } else if (habit.category === 'Mindfulness') {
-                mindfulnessStreak = Math.max(mindfulnessStreak, streak)
-            }
+            const dateStr = new Date(row.completed_date).toLocaleDateString('en-CA');
+            targetSet.add(dateStr);
         })
+       
+        const getCategoryStreak = (dateSet: Set<string>): number => {
+            const checkDate = new Date();
+            const todayStr = checkDate.toLocaleDateString('en-CA')
 
+            if (!dateSet.has(todayStr)) {
+                checkDate.setDate(checkDate.getDate() - 1);
+                const yesterdayStr = checkDate.toLocaleDateString('en-CA');
+                if (!dateSet.has(yesterdayStr)) return 0;
+            }
 
-        return { healthStreak, codingStreak, fitnessStreak, mindfulnessStreak };
+            let streak = 0;
+
+            while (dateSet.has(checkDate.toLocaleDateString('en-CA'))) {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+
+            return streak
+        }
+
+        return {
+            healthStreak: getCategoryStreak(categoryDates.Health),
+            codingStreak: getCategoryStreak(categoryDates.Coding),
+            fitnessStreak: getCategoryStreak(categoryDates.Fitness),
+            mindfulnessStreak: getCategoryStreak(categoryDates.Mindfulness),
+        };
+
 
     } catch (err) {
         console.log('Error occurred while calculating habit breakdown', err);
@@ -282,8 +300,6 @@ router.get('/:month', authenticateToken, async (req, res) => {
        const [year, thisMonth] = month.split('-');
 
        const daysInMonth = new Date(Number(year), Number(thisMonth), 0).getDate();
-
-        console.log(daysInMonth)
 
        const startDate = `${year}-${thisMonth}-01`;
        const endDate = `${year}-${thisMonth}-${daysInMonth}`
