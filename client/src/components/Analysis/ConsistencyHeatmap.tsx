@@ -23,7 +23,7 @@ export default function ConsistencyHeatmap({completeAmount} : ConsistencyHeatmap
     heatMapArr.push(getLocalDateString(calcDate))
 
     for (let i = 0; i < count; i++) {
-        calcDate = new Date(calcDate.getTime() - 86400000)
+        calcDate.setDate(calcDate.getDate() - 1)
         heatMapArr.push(getLocalDateString(calcDate))
     }
 
@@ -32,7 +32,9 @@ export default function ConsistencyHeatmap({completeAmount} : ConsistencyHeatmap
     const completionMap: any = {};
     
     completeAmount?.forEach((item) => {
-        const dateKey = item.last_completed_date.split('T')[0];
+        const dateKey = item.last_completed_date.includes('T')
+        ? new Date(item.last_completed_date).toLocaleDateString('en-CA')
+        : item.last_completed_date;
         completionMap[dateKey] = Number(item.completion_count);
     })
 
