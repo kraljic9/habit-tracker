@@ -171,14 +171,33 @@ router.get('/', authenticateToken, async (req, res) => {
         const endDate = new Date();
 
         startDate.setDate(endDate.getDate() - 90);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999)
 
         const result = await pool.query(
-            'SELECT last_completed_date, COUNT(*) as completion_count FROM habits WHERE userid = $1 AND last_completed_date >= $2 AND last_completed_date <= $3 GROUP BY last_completed_date', [userId, startDate, endDate]
-        )
+            `SELECT habit_logs.completed_date
+             FROM habit_logs
+             JOIN habits ON habit_logs.habit_id = habits.id
+             WHERE habit_logs.completed_date >= $1
+               AND habit_logs.completed_date <= $2
+               AND habits.userid = $3`,
+            [startDate, endDate, userId]
+        );
 
-        const completeAmount = result.rows;
+        const countsByDate: any = {};
 
-        return {completeAmount}
+        for (const row of result.rows) {
+            const dateStr = new Date(row.completed_date).toLocaleDateString('en-CA');
+            countsByDate[dateStr] = (countsByDate[dateStr] || 0) + 1
+        }
+
+        const completeAmount = Object.entries(countsByDate).map(([date, count]) => ({
+            last_completed_date: date,
+            completion_count: count,
+        }));
+
+        return { completeAmount };  
+
         } catch(err) {
             console.log('Error accured while fetching heatmap data', err)
             return {completeAmount: 0}
