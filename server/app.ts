@@ -7,6 +7,7 @@ import 'dotenv/config'
 import pool from './db.ts'
 import { authenticateToken } from './auth.js';
 import analyticsRouter from './analytics.ts'
+import { allowedNodeEnvironmentFlags } from 'process';
 
 const app = express();
 const PORT = 5000;
@@ -103,11 +104,12 @@ app.get('/api/habits', authenticateToken, async (req, res) => {
 
         try {
         const todayObj = new Date();
-        const today = todayObj.toISOString().split('T')[0] || '';
+        const today = todayObj.toLocaleDateString('en-CA') || '';
 
         const yesterdayObj = new Date();
         yesterdayObj.setDate(todayObj.getDate() - 1);
-        const yesterday = yesterdayObj.toISOString().split('T')[0] || '';
+        yesterdayObj.setHours(0, 0, 0, 0)
+        const yesterday = yesterdayObj.toLocaleDateString('en-CA') || '';
 
         const userId = req.query.userId ? Number(req.query.userId) : undefined;
 
@@ -118,59 +120,8 @@ app.get('/api/habits', authenticateToken, async (req, res) => {
 
         const result = await pool.query('SELECT * FROM habits WHERE userid = $1', [userId]);
 
-        for (let i = 0; i < result.rows.length; i++) {
-            let habit = result.rows[i];
-            let needsUpdate = false;
-
-            const lastReset = habit.last_reset_date;
-
-            const lastCompletedStr = habit.last_completed_date 
-                ? new Date(habit.last_completed_date).toISOString().split('T')[0] 
-                : null;
-
-            const isCompletedToday = lastCompletedStr === today;
-
-            if (!lastReset || lastReset < today) {
-                if (isCompletedToday) {
-                    habit.last_reset_date = today;
-                    if (habit.metric && habit.metric.kind === 'boolean') {
-                        habit.metric.completed = true;
-                    }
-                    needsUpdate = true;
-                } else {
-                    habit.iscomplete = false;
-                    habit.last_reset_date = today;
-                    
-                    if (habit.metric && habit.metric.kind === 'boolean') {
-                        habit.metric.completed = false;
-                    } else if (habit.metric && habit.metric.kind === 'numeric') {
-                        habit.metric.current = 0; 
-                    } else if (habit.metric && habit.metric.kind === 'timer') {
-                        habit.metric.durationSeconds = 0; 
-                    }
-                    
-                    needsUpdate = true;
-                }
-            }
-
-
-            if (lastCompletedStr && lastCompletedStr < yesterday) {
-                habit.streak = 0;
-                needsUpdate = true;
-            }
-
-            if (needsUpdate) {
-                await pool.query(
-                    'UPDATE habits SET iscomplete = $1, last_reset_date = $2, streak = $3, metric = $4 WHERE id = $5',
-                    [habit.iscomplete, habit.last_reset_date, habit.streak, JSON.stringify(habit.metric), habit.id]
-                );
-            }
-
-            habit.isComplete = habit.iscomplete;
-        }
-
-        res.status(200).json(result.rows);
- 
+        const habitLogs = await pool.query(`SELECT * FROM habit_logs JOIN habits ON habit_logs.habit_id = habits.id `)
+    
   
 } catch(err:any) {
         console.error(err.message);
