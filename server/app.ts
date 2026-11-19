@@ -8,6 +8,7 @@ import pool from './db.ts'
 import { authenticateToken } from './auth.js';
 import analyticsRouter from './analytics.ts'
 import { allowedNodeEnvironmentFlags } from 'process';
+import { json } from 'stream/consumers';
 
 const app = express();
 const PORT = 5000;
@@ -103,13 +104,6 @@ app.post('/api/login/user', async (req, res) => {
 app.get('/api/habits', authenticateToken, async (req, res) => {
 
         try {
-        const todayObj = new Date();
-        const today = todayObj.toLocaleDateString('en-CA') || '';
-
-        const yesterdayObj = new Date();
-        yesterdayObj.setDate(todayObj.getDate() - 1);
-        yesterdayObj.setHours(0, 0, 0, 0)
-        const yesterday = yesterdayObj.toLocaleDateString('en-CA') || '';
 
         const userId = req.query.userId ? Number(req.query.userId) : undefined;
 
@@ -120,8 +114,63 @@ app.get('/api/habits', authenticateToken, async (req, res) => {
 
         const result = await pool.query('SELECT * FROM habits WHERE userid = $1', [userId]);
 
-        const habitLogs = await pool.query(`SELECT * FROM habit_logs JOIN habits ON habit_logs.habit_id = habits.id `)
+        const habitLogs = await pool.query(`SELECT * FROM habit_logs JOIN habits ON habit_logs.habit_id = habits.id WHERE habits.userid = $1`, [userId])
     
+        const habitDatesById: Record<number, Set<string>> = {};
+
+        for (const row of habitLogs.rows) {
+            const dateStr = new Date(row.completed_date).toLocaleDateString('en-CA');
+            const habitId = row.habit_id;
+            
+            if (!habitDatesById[habitId]) {
+                habitDatesById[habitId] = new Set<string>();
+            }
+
+            habitDatesById[habitId].add(dateStr);
+        }
+
+        function getHabitStreak(dateSet: Set<string>) {
+            const checkDate = new Date();
+            const todayStr = checkDate.toLocaleDateString('en-CA');
+
+            if (!dateSet.has(todayStr)) {
+                checkDate.setDate(checkDate.getDate() - 1);
+                checkDate.setHours(12, 0, 0, 0)
+                const yesterdayStr = checkDate.toLocaleDateString('en-CA');
+                if (!dateSet.has(yesterdayStr)) return 0 
+            }
+
+            let streak = 0;
+
+            while (dateSet.has(checkDate.toLocaleDateString('en-CA'))) {
+                streak++
+                checkDate.setHours(12, 0, 0, 0)
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+
+            return streak
+        }
+
+        const today = new Date().toLocaleDateString('en-CA');
+
+        for (const habit of result.rows) {
+            const dateSet = habitDatesById[habit.id] ?? new Set<string>();
+            const isComplete = dateSet.has(today);
+            const streak = getHabitStreak(dateSet);
+
+            if (!isComplete && habit.metric) {
+                if (habit.metric.kind === 'boolean') habit.metric.completed = false;
+                else if (habit.metric.kind === 'numeric') habit.metric.current = 0;
+                else if (habit.metric.kind === 'timer') habit.metric.durationSeconds = 0;
+            }
+
+            await pool.query(
+                    'UPDATE habits SET iscomplete = $1, streak = $2, metric = $3 WHERE id = $4',
+                    [isComplete, streak, JSON.stringify(habit.metric), habit.id]
+                );
+        }
+
+        res.status(200).json(result.rows)
   
 } catch(err:any) {
         console.error(err.message);
