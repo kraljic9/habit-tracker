@@ -7,8 +7,7 @@ import 'dotenv/config'
 import pool from './db.ts'
 import { authenticateToken } from './auth.js';
 import analyticsRouter from './analytics.ts'
-import { allowedNodeEnvironmentFlags } from 'process';
-import { json } from 'stream/consumers';
+import communityRouter from './community.ts'
 
 const app = express();
 const PORT = 5000;
@@ -16,6 +15,7 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 app.use('/api/analytics', analyticsRouter)
+app.use('/api/community', communityRouter)
 
 
 if (!process.env.JWT_SECRET) {
