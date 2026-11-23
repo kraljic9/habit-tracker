@@ -44,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
             is_member: joinedGroupIds.has(group.id),
         }))
 
-        return res.status(200).json(groups);
+        return res.status(200).json({groups});
 
     } catch (err) {
         console.error(err);
