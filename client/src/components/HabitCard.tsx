@@ -61,7 +61,7 @@ export function HabitCard({
       100
     );
   }
-
+  
   return (
     <div className="p-4 rounded-2xl border border-slate-800 bg-slate-900/50 flex flex-col gap-3">
       {/* Header */}
