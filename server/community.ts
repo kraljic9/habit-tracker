@@ -41,13 +41,48 @@ router.get('/', authenticateToken, async (req, res) => {
     const groups = groupResult.rows.map((group) => ({
             ...group,
             members_count: Number(group.members_count),
-            joined_groups: joinedGroupIds.has(group.id),
+            is_member: joinedGroupIds.has(group.id),
         }))
 
         return res.status(200).json({groups});
 
     } catch (err) {
-        res.status(500).json(err)
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch data' })
+    }
+})
+
+router.post('/:groupId', authenticateToken, async (req, res) => {
+    try{
+
+        const userId = req.user?.userId;
+        const groupId = req.params.groupId;
+
+        const today = new Date();
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const isMember = await pool.query(`
+            SELECT group_id FROM group_members WHERE user_id = $1 AND group_id = $2
+            `, [userId, groupId])
+    
+        if (isMember.rows.length > 0) {
+            res.status(200).json({message: 'User is already a member'});
+            return
+        }
+        
+            await pool.query(`
+            INSERT INTO group_members (group_id, user_id, joined_at)
+            VALUES ($1, $2, $3)    
+            `, [groupId, userId, today])
+        
+        res.status(201).json({message: 'New member added'});
+        }
+    catch(err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to join group' })
     }
 })
 
