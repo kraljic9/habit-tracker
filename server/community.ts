@@ -44,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
             is_member: joinedGroupIds.has(group.id),
         }))
 
-        return res.status(200).json({groups});
+        return res.status(200).json(groups);
 
     } catch (err) {
         console.error(err);
@@ -83,6 +83,28 @@ router.post('/:groupId', authenticateToken, async (req, res) => {
     catch(err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to join group' })
+    }
+})
+
+router.delete('/:groupId', authenticateToken, async(req, res) => {
+    try{
+        const userId = req.user?.userId;
+        const groupId = req.params.groupId;
+
+        const result = await pool.query(`
+            DELETE FROM group_members WHERE user_id = $1 AND group_id = $2 
+            `, [userId, groupId]
+        )
+
+        if (result.rowCount === 0) {
+            res.status(401).json({ error: 'Unauthorized' })
+            return;
+        }
+
+        res.status(200).json({ message: 'Left group successfully' })
+    } catch(err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to remove user' })
     }
 })
 
