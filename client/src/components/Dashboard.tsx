@@ -13,10 +13,32 @@ function Dashboard() {
     })
     
     const [isLogedIn, setIsLogedIn] = useState<boolean>(() => !!currentUser)  
-    
+    const [currentStreak, setCurrentStreak] = useState<number>(0)
+
     const {habits, handleAddHabit, handleDecrement, handleIncrement, toggleTimer, toggleCompleted, handleDelete} = useCardButtonHooks(
         currentUser?.id ? currentUser.id : undefined
     );
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!currentUser || !token) {
+            setCurrentStreak(0);
+            return;
+        }
+
+        fetch('http://localhost:5000/api/analytics', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data && typeof data.currentStreak === 'number') {
+                    setCurrentStreak(data.currentStreak);
+                }
+            })
+            .catch((err) => console.error('Failed to fetch streak:', err));
+    }, [currentUser, habits]);
     
     useEffect(() => {
         if (currentUser) {
@@ -39,7 +61,7 @@ function Dashboard() {
             title="My daily habits"
         >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-               <ProgressHeader stats={stats}/>
+                <ProgressHeader stats={stats} currentStreak={currentStreak} />
             </div>
 
             <div className="flex flex-col gap-4">

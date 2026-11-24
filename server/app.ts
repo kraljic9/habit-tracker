@@ -8,6 +8,7 @@ import pool from './db.ts'
 import { authenticateToken } from './auth.js';
 import analyticsRouter from './analytics.ts'
 import communityRouter from './community.ts'
+import { syncUserTotalStreak } from './analytics.ts';
 
 const app = express();
 const PORT = 5000;
@@ -182,112 +183,120 @@ app.get('/api/habits', authenticateToken, async (req, res) => {
 
 app.patch('/api/habits/:id', authenticateToken, async (req, res) => {
     try {
-        const habitId = req.params.id;        
+        const habitId = req.params.id;
         const habitResult = await pool.query(`SELECT * FROM habits WHERE id = $1`, [habitId]);
-    
+
         if (habitResult.rows.length === 0) {
             res.status(404).send('Habit not found');
             return;
         }
-    
+
         const habit = habitResult.rows[0] as Habit;
-        const today = new Date().toLocaleDateString('en-CA');;
+        const today = new Date().toLocaleDateString('en-CA');
 
         let newStreak = Number(habit.streak);
         let newLastCompleted = habit.last_completed_date;
 
-        const wasCompleted = (habit as any).iscomplete === true || (habit as any).iscomplete === 'true' || (habit as any).iscomplete === 1;
+        const wasCompleted =
+            (habit as any).iscomplete === true ||
+            (habit as any).iscomplete === 'true' ||
+            (habit as any).iscomplete === 1;
 
         let finalIsComplete = false;
         let updatedMetric: any = habit.metric;
 
         const addRowTxt = `
-                INSERT INTO habit_logs (habit_id, completed_date) VALUES ($1, $2);
-            `
+            INSERT INTO habit_logs (habit_id, completed_date) VALUES ($1, $2);
+        `;
 
         const removeRowTxt = `
-                DELETE FROM habit_logs WHERE habit_id = $1 AND completed_date = $2
-        `
+            DELETE FROM habit_logs WHERE habit_id = $1 AND completed_date = $2
+        `;
 
-        const values = [habitId, today]
+        const values = [habitId, today];
 
         if (habit.metric.kind === 'boolean') {
             const { isComplete: incomingIsComplete } = req.body; // boolean from frontend
-            finalIsComplete = incomingIsComplete 
+            finalIsComplete = incomingIsComplete;
             if (finalIsComplete && !wasCompleted) {
                 newStreak += 1;
                 newLastCompleted = today;
-                await pool.query(addRowTxt, values)
-        } else if (!finalIsComplete && wasCompleted) {
-            newStreak = Math.max(0, newStreak - 1);
-            newLastCompleted = null;
-            await pool.query(removeRowTxt, values)
-        }
-        
-        updatedMetric = {
-            kind: 'boolean',
-            completed: finalIsComplete
-        };
+                await pool.query(addRowTxt, values);
+            } else if (!finalIsComplete && wasCompleted) {
+                newStreak = Math.max(0, newStreak - 1);
+                newLastCompleted = null;
+                await pool.query(removeRowTxt, values);
+            }
 
-    } else if (habit.metric.kind === 'numeric') {
+            updatedMetric = {
+                kind: 'boolean',
+                completed: finalIsComplete,
+            };
+        } else if (habit.metric.kind === 'numeric') {
+            const { increment } = req.body;
+            const currentCount = Number(habit.metric.current || 0);
+            const targetCount = Number(habit.metric.target || 1);
 
-        const {increment} = req.body;
-        const currentCount = Number(habit.metric.current || 0);
-        const targetCount = Number(habit.metric.target || 1);
+            const newCurrent = Math.max(0, currentCount + (increment || 0));
+            finalIsComplete = newCurrent >= targetCount;
 
-        const newCurrent = Math.max(0, currentCount + (increment || 0));
-        finalIsComplete = newCurrent >= targetCount;
+            if (finalIsComplete && !wasCompleted) {
+                newStreak += 1;
+                newLastCompleted = today;
+                await pool.query(addRowTxt, values);
+            } else if (!finalIsComplete && wasCompleted) {
+                newStreak = Math.max(0, newStreak - 1);
+                newLastCompleted = null;
+                await pool.query(removeRowTxt, values);
+            }
 
-        if (finalIsComplete && !wasCompleted) {
-            newStreak += 1;
-            newLastCompleted = today
-            await pool.query(addRowTxt, values);
-        } else if (!finalIsComplete && wasCompleted) {
-            newStreak = Math.max(0, newStreak - 1);
-            newLastCompleted = null;
-            await pool.query(removeRowTxt, values);
-        }
-
-        updatedMetric = {
+            updatedMetric = {
                 kind: 'numeric',
                 current: newCurrent,
-                target: targetCount
+                target: targetCount,
             };
-    } else if (habit.metric.kind === 'timer') {
+        } else if (habit.metric.kind === 'timer') {
+            const { durationSeconds } = req.body;
+            const currentSeconds = Number(habit.metric.durationSeconds || 0);
+            const targetMinutes = Number(habit.metric.targetMinutes || 1);
+            const targetSeconds = targetMinutes * 60;
 
-        const {durationSeconds} = req.body;
-        const currentSeconds = Number(habit.metric.durationSeconds || 0);
-        const targetMinutes= Number(habit.metric.targetMinutes || 1);
-        const targetSeconds = targetMinutes* 60;
+            const newCurrentTime = currentSeconds + (durationSeconds || 0);
+            finalIsComplete = newCurrentTime >= targetSeconds;
 
-        let newCurrentTime = currentSeconds + (durationSeconds || 0);
-        finalIsComplete = newCurrentTime >= targetSeconds;
+            if (finalIsComplete && !wasCompleted) {
+                newStreak += 1;
+                newLastCompleted = today;
+                await pool.query(addRowTxt, values);
+            } else if (!finalIsComplete && wasCompleted) {
+                newStreak = Math.max(0, newStreak - 1);
+                newLastCompleted = null;
+                await pool.query(removeRowTxt, values);
+            }
 
-
-        if (finalIsComplete && !wasCompleted) {
-            newStreak += 1;
-            newLastCompleted = today;
-            await pool.query(addRowTxt, values);
-        } else if (!finalIsComplete && wasCompleted) {
-            newStreak = Math.max(0, newStreak - 1);
-            newLastCompleted = null;
-            await pool.query(removeRowTxt, values);
+            updatedMetric = {
+                kind: 'timer',
+                durationSeconds: newCurrentTime,
+                targetMinutes: targetMinutes,
+            };
         }
-    
-        updatedMetric = {
-            kind: 'timer',
-            durationSeconds: newCurrentTime,
-            targetMinutes: targetMinutes 
-        }
-    }
 
-    let updateResult = await pool.query(
-    'UPDATE habits SET iscomplete = $1, streak = $2, last_completed_date = $3, last_reset_date = $4, metric = $5 WHERE id = $6 RETURNING *',
-    [finalIsComplete, newStreak, newLastCompleted, today, JSON.stringify(updatedMetric), habitId]
-    );
+        const updateResult = await pool.query(
+            `UPDATE habits
+             SET iscomplete = $1,
+                 streak = $2,
+                 last_completed_date = $3,
+                 last_reset_date = $4,
+                 metric = $5
+             WHERE id = $6
+             RETURNING *`,
+            [finalIsComplete, newStreak, newLastCompleted, today, JSON.stringify(updatedMetric), habitId]
+        );
 
-    res.status(201).json(updateResult.rows[0])
+        const ownerId = Number((habit as any).userid);
+        await syncUserTotalStreak(ownerId);
 
+        res.status(201).json(updateResult.rows[0]);
     } catch (err: any) {
         console.error("PATCH Error:", err.message);
         res.status(500).send('Server Error');

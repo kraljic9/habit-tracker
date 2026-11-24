@@ -1,20 +1,20 @@
 import type { HabitStats } from "../hooks/useHabitStats";
 
-
 interface ProgressHeaderProps {
     stats: HabitStats;
+    currentStreak: number;
 }
 
-export default function ProgressHeader({ stats }: ProgressHeaderProps) {
-    const { dailyProgress, maxStreak, totalCompletedToday, totalHabits } = stats;
+export default function ProgressHeader({ stats, currentStreak }: ProgressHeaderProps) {
+    const { dailyProgress, totalCompletedToday, totalHabits } = stats;
 
-    // SVG Circle Math
     const radius = 28;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (dailyProgress / 100) * circumference;
 
     return (
-<>   {/* Daily Progress */}
+        <>
+            {/* Daily Progress */}
             <div className="bg-slate-900/80 backdrop-blur border border-slate-800/80 p-5 rounded-2xl flex items-center justify-between">
                 <div>
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
@@ -23,10 +23,8 @@ export default function ProgressHeader({ stats }: ProgressHeaderProps) {
                     <p className="text-3xl font-extrabold text-emerald-400">{dailyProgress}%</p>
                 </div>
 
-                {/* SVG Circular Progress Bar */}
                 <div className="relative w-16 h-16 flex items-center justify-center">
                     <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
-                        {/* Background Circle */}
                         <circle
                             cx="32"
                             cy="32"
@@ -36,7 +34,6 @@ export default function ProgressHeader({ stats }: ProgressHeaderProps) {
                             stroke="currentColor"
                             fill="transparent"
                         />
-                        {/* Animated Progress Circle */}
                         <circle
                             cx="32"
                             cy="32"
@@ -62,7 +59,7 @@ export default function ProgressHeader({ stats }: ProgressHeaderProps) {
                     Active Streak
                 </p>
                 <div className="text-3xl font-extrabold text-amber-500 flex items-center gap-2">
-                    🔥 {maxStreak} Days
+                    🔥 {currentStreak} Days
                 </div>
             </div>
 
@@ -88,6 +85,6 @@ export default function ProgressHeader({ stats }: ProgressHeaderProps) {
                     />
                 </div>
             </div>
-      </>         
+        </>
     );
 }
