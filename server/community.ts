@@ -125,7 +125,7 @@ router.get('/milestones', authenticateToken, async (req, res) => {
             FROM users
             `)
             
-            const groupsData = await pool.query(`
+        const groupsData = await pool.query(`
                 SELECT * FROM community_groups
                 JOIN group_members ON community_groups.id = group_members.group_id
                 `)
@@ -156,10 +156,37 @@ router.get('/milestones', authenticateToken, async (req, res) => {
                     return {streakMilestones}
                 }
 
+                const getJoinedLog: any = () => {
+                    const today = new Date().toLocaleDateString('en-CA');
+                    let joinedMilestone = []
+                   
+                    for (const data of groupsData.rows) {
+                         if (data.joined_at && new Date(data.joined_at).toLocaleDateString('en-CA') === today) {
+                            const curUserId = data.user_id;
+
+                            for (const user of usersData.rows) {
+                                if (user.id === curUserId) {
+                                    const joinedMsg = {
+                                        "type": "milestone",
+                                        "groupName": `${data.group_title}`,
+                                        "message": `${user.username} joined ${data.group_title}`,
+                                    }
+
+                                    joinedMilestone.push(joinedMsg)
+                                }
+                            }
+                        } 
+                    }
+
+                    return {joinedMilestone}
+                }
+
         const {streakMilestones} = await getStreakMilestones()
+        const {joinedMilestone} = await getJoinedLog();
         
         res.status(200).json({
-            milestones: streakMilestones
+            milestones: streakMilestones,
+            joinedMilestone: joinedMilestone
         })
 
     } catch (err) {
