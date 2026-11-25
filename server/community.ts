@@ -4,6 +4,8 @@ import pool from './db.js';
 
 const router = express.Router();
 
+const STREAK_MILESTONES = [3, 5, 10, 20, 30, 50, 75, 100];
+
 router.get('/', authenticateToken, async (req, res) => {
     try{
         
@@ -108,4 +110,64 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
     }
 })
 
+router.get('/milestones', authenticateToken, async (req, res) => { 
+    
+    try{
+        const userId = req.user?.userId;
+        
+        if (!userId) {
+            res.status(401).json('Error user not found')
+            return
+        }
+
+        const usersData = await pool.query(`
+            SELECT id, username, totalstreak 
+            FROM users
+            `)
+            
+            const groupsData = await pool.query(`
+                SELECT * FROM community_groups
+                JOIN group_members ON community_groups.id = group_members.group_id
+                `)
+                
+                const getStreakMilestones : any = () => {
+                    let streakMilestones : any = []
+                    
+                    for (const user of usersData.rows) { 
+                        const usersStreaks : number[] = [];
+                        for (const milestone of STREAK_MILESTONES) {
+                            if (Number(user.totalstreak) >= milestone) {
+                                usersStreaks.push(milestone);
+                            }
+                        }
+
+                        if (usersStreaks.length > 0) {
+                        const max = Math.max(...usersStreaks)
+                        
+                        let streakMilestoneMsg = {
+                            "type": "milestone",
+                            "milestone": max,
+                            "message": `${user.username} just hit a ${max} day streak`
+                        }
+                        streakMilestones.push(streakMilestoneMsg)
+                    }
+                    }
+
+                    return {streakMilestones}
+                }
+
+        const {streakMilestones} = await getStreakMilestones()
+        
+        res.status(200).json({
+            milestones: streakMilestones
+        })
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch milestones' })
+    }
+})
+
 export default router;
+
+
