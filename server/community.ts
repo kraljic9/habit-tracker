@@ -110,8 +110,7 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
     }
 })
 
-router.get('/milestones', authenticateToken, async (req, res) => { 
-    
+router.get('/milestones', authenticateToken, async (req, res) => {  
     try{
         const userId = req.user?.userId;
         
@@ -210,6 +209,43 @@ router.get('/milestones', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch milestones' })
+    }
+})
+
+router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => {
+    try{
+
+        const milestoneId = req.params.id;
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            res.status(401).json('Error user not found')
+            return
+        }
+
+        const {reactionType} = req.body;
+
+        const queryTxt = 
+        `
+        INSERT INTO milestone_reactions (milestone_id, user_id, reaction_type)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (milestone_id, user_id, reaction_type) DO NOTHING
+        RETURNING *
+        `
+
+        const values = [milestoneId, userId, reactionType];
+
+        const result = await pool.query(queryTxt, values);
+
+        if (result.rows.length === 0) {
+        res.status(200).json({ message: 'Reaction already exists', added: false });
+        return;
+        }
+
+        res.status(201).json({ reaction: result.rows[0], added: true });
+    } catch(err) {
+        console.log(err)
+        res.status(500).json({error: 'Failed to add reaction'})
     }
 })
 
