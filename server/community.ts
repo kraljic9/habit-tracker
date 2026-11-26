@@ -130,31 +130,42 @@ router.get('/milestones', authenticateToken, async (req, res) => {
                 JOIN group_members ON community_groups.id = group_members.group_id
                 `)
                 
-                const getStreakMilestones : any = () => {
-                    let streakMilestones : any = []
-                    
-                    for (const user of usersData.rows) { 
-                        const usersStreaks : number[] = [];
+                const getStreakMilestones = async () => {
+                    for (const user of usersData.rows) {
+                        const usersStreaks: number[] = [];
+
                         for (const milestone of STREAK_MILESTONES) {
-                            if (Number(user.totalstreak) >= milestone) {
-                                usersStreaks.push(milestone);
-                            }
+                        if (Number(user.totalstreak) >= milestone) {
+                            usersStreaks.push(milestone);
+                        }
                         }
 
                         if (usersStreaks.length > 0) {
-                        const max = Math.max(...usersStreaks)
-                        
-                        let streakMilestoneMsg = {
-                            "type": "milestone",
-                            "milestone": max,
-                            "message": `${user.username} just hit a ${max} day streak`
+                        const max = Math.max(...usersStreaks);
+
+                        const queryTxt = `
+                            INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
+                            VALUES ($1, $2, $3, $4)
+                            ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
+                            RETURNING *
+                        `;
+
+                        const values = [
+                            userId,
+                            'streak',
+                            max,
+                            `${user.username} just hit a ${max} day streak`,
+                        ];
+
+                        await pool.query(queryTxt, values);
                         }
-                        streakMilestones.push(streakMilestoneMsg)
-                    }
                     }
 
-                    return {streakMilestones}
-                }
+                    const result = await pool.query(
+                        'SELECT * FROM community_milestones ORDER BY created_at DESC'
+                    );
+                    return result.rows;
+                };
 
                 const getJoinedLog: any = () => {
                     const today = new Date().toLocaleDateString('en-CA');
@@ -180,6 +191,10 @@ router.get('/milestones', authenticateToken, async (req, res) => {
 
                     return {joinedMilestone}
                 }
+
+                const getReactionsLog: any = () => {
+
+                } 
 
         const {streakMilestones} = await getStreakMilestones()
         const {joinedMilestone} = await getJoinedLog();
