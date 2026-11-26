@@ -151,7 +151,7 @@ router.get('/milestones', authenticateToken, async (req, res) => {
                         `;
 
                         const values = [
-                            userId,
+                            user.id,
                             'streak',
                             max,
                             `${user.username} just hit a ${max} day streak`,
@@ -160,16 +160,11 @@ router.get('/milestones', authenticateToken, async (req, res) => {
                         await pool.query(queryTxt, values);
                         }
                     }
-
-                    const result = await pool.query(
-                        'SELECT * FROM community_milestones ORDER BY created_at DESC'
-                    );
-                    return result.rows;
                 };
 
-                const getJoinedLog: any = () => {
+                const getJoinedLog: any = async () => {
                     const today = new Date().toLocaleDateString('en-CA');
-                    let joinedMilestone = []
+                    
                    
                     for (const data of groupsData.rows) {
                          if (data.joined_at && new Date(data.joined_at).toLocaleDateString('en-CA') === today) {
@@ -177,31 +172,39 @@ router.get('/milestones', authenticateToken, async (req, res) => {
 
                             for (const user of usersData.rows) {
                                 if (user.id === curUserId) {
-                                    const joinedMsg = {
-                                        "type": "milestone",
-                                        "groupName": `${data.group_title}`,
-                                        "message": `${user.username} joined ${data.group_title}`,
-                                    }
+                                
+                                    const queryTxt = `
+                                        INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
+                                        VALUES ($1, $2, $3, $4)
+                                        ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
+                                        RETURNING *
+                                    `;
 
-                                    joinedMilestone.push(joinedMsg)
+                                    const values = [
+                                        user.id,
+                                        'group_join',
+                                        data.group_title,
+                                        `${user.username} has joined ${data.group_title}`,
+                                    ];
+
+                                    await pool.query(queryTxt, values)
                                 }
                             }
                         } 
                     }
-
-                    return {joinedMilestone}
                 }
 
                 const getReactionsLog: any = () => {
 
                 } 
 
-        const {streakMilestones} = await getStreakMilestones()
-        const {joinedMilestone} = await getJoinedLog();
-        
+                await getStreakMilestones();
+                await getJoinedLog()
+
+                const result = await pool.query(`SELECT * FROM community_milestones ORDER BY created_at DESC`)
+    
         res.status(200).json({
-            milestones: streakMilestones,
-            joinedMilestone: joinedMilestone
+            milestones: result.rows
         })
 
     } catch (err) {
