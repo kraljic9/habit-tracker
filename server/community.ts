@@ -6,6 +6,8 @@ const router = express.Router();
 
 const STREAK_MILESTONES = [3, 5, 10, 20, 30, 50, 75, 100];
 
+console.log('authenticateToken type:', typeof authenticateToken);
+
 router.get('/', authenticateToken, async (req, res) => {
     try{
         
@@ -110,179 +112,179 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
     }
 })
 
-router.get('/milestones', authenticateToken, async (req, res) => {
-  try {
+        router.get('/milestones', authenticateToken, async (req, res) => {
+        try {
             const userId = req.user?.userId;
 
-                if (!userId) {
-                res.status(401).json('Error user not found');
-                return;
+            if (!userId) {
+            res.status(401).json('Error user not found');
+            return;
+            }
+
+            const usersData = await pool.query(`
+            SELECT id, username, totalstreak
+            FROM users
+            `);
+
+            const groupsData = await pool.query(`
+            SELECT
+                community_groups.id AS group_id,
+                community_groups.group_title,
+                group_members.user_id,
+                group_members.joined_at
+            FROM community_groups
+            JOIN group_members ON community_groups.id = group_members.group_id
+            `);
+
+            const getStreakMilestones = async () => {
+            for (const user of usersData.rows) {
+                const usersStreaks: number[] = [];
+
+                for (const milestone of STREAK_MILESTONES) {
+                if (Number(user.totalstreak) >= milestone) {
+                    usersStreaks.push(milestone);
+                }
                 }
 
-                const usersData = await pool.query(`
-                SELECT id, username, totalstreak
-                FROM users
-                `);
+                if (usersStreaks.length > 0) {
+                const max = Math.max(...usersStreaks);
 
-                const groupsData = await pool.query(`
-                SELECT * FROM community_groups
-                JOIN group_members ON community_groups.id = group_members.group_id
-                `);
+                const queryTxt = `
+                    INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
+                    RETURNING *
+                `;
 
-                const getStreakMilestones = async () => {
+                const values = [
+                    user.id,
+                    'streak',
+                    max,
+                    `${user.username} just hit a ${max} day streak`,
+                ];
+
+                await pool.query(queryTxt, values);
+                }
+            }
+            };
+
+            const getJoinedLog: any = async () => {
+            const today = new Date().toLocaleDateString('en-CA');
+
+            for (const data of groupsData.rows) {
+                if (
+                data.joined_at &&
+                new Date(data.joined_at).toLocaleDateString('en-CA') === today
+                ) {
+                const curUserId = data.user_id;
+
                 for (const user of usersData.rows) {
-                    const usersStreaks: number[] = [];
+                    if (user.id === curUserId) {
+                    const queryTxt = `
+                        INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
+                        RETURNING *
+                    `;
 
-                    for (const milestone of STREAK_MILESTONES) {
-                    if (Number(user.totalstreak) >= milestone) {
-                        usersStreaks.push(milestone);
-                    }
-                    }
+                    const values = [
+                        user.id,
+                        'group_join',
+                        data.group_title,
+                        `${user.username} has joined ${data.group_title}`,
+                    ];
 
-                        if (usersStreaks.length > 0) {
-                        const max = Math.max(...usersStreaks);
-
-                        const queryTxt = `
-                            INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
-                            VALUES ($1, $2, $3, $4)
-                            ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
-                            RETURNING *
-                        `;
-
-                        const values = [
-                            user.id,
-                            'streak',
-                            max,
-                            `${user.username} just hit a ${max} day streak`,
-                        ];
-
-                        await pool.query(queryTxt, values);
-                        }
-                  }
-                };
-
-                const getJoinedLog: any = async () => {
-                const today = new Date().toLocaleDateString('en-CA');
-
-                for (const data of groupsData.rows) {
-                    if (
-                    data.joined_at &&
-                    new Date(data.joined_at).toLocaleDateString('en-CA') === today
-                    ) {
-                    const curUserId = data.user_id;
-
-                    for (const user of usersData.rows) {
-                        if (user.id === curUserId) {
-                            const queryTxt = `
-                                INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
-                                VALUES ($1, $2, $3, $4)
-                                ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
-                                RETURNING *
-                            `;
-
-                            const values = [
-                                user.id,
-                                'group_join',
-                                data.group_title,
-                                `${user.username} has joined ${data.group_title}`,
-                            ];
-
-                            await pool.query(queryTxt, values);
-                            }
-                        }
+                    await pool.query(queryTxt, values);
                     }
                 }
-                };
-
-                await getStreakMilestones();
-                await getJoinedLog();
-
-                const REACTION_TYPE = 'clap';
-
-                const milestonesRes = await pool.query(
-                `SELECT * FROM community_milestones ORDER BY created_at DESC`
-                );
-
-                const reactionsRes = await pool.query(
-                `SELECT milestone_id, user_id FROM milestone_reactions WHERE reaction_type = $1`,
-                [REACTION_TYPE]
-                );
-
-                const countByMilestone = new Map<number, number>();
-                const likedByCurrentUser = new Set<number>();
-
-                for (const row of reactionsRes.rows) {
-                const currentCount = countByMilestone.get(row.milestone_id) ?? 0;
-                countByMilestone.set(row.milestone_id, currentCount + 1);
-
-                if (Number(row.user_id) === Number(userId)) {
-                    likedByCurrentUser.add(row.milestone_id);
                 }
-                }
+            }
+            };
 
-                const milestonesWithReactions = milestonesRes.rows.map((milestone) => ({
-                ...milestone,
-                reaction_count: countByMilestone.get(milestone.id) ?? 0,
-                liked_by_me: likedByCurrentUser.has(milestone.id),
-                }));
+            await getStreakMilestones();
+            await getJoinedLog();
 
-                res.status(200).json({
-                milestones: milestonesWithReactions,
-                });
+            const REACTION_TYPE = 'clap';
 
-                } catch (err) {
-                    console.error(err);
-                    res.status(500).json({ error: 'Failed to fetch milestones' });
-                }
-});
+            const milestonesRes = await pool.query(
+            `SELECT * FROM community_milestones ORDER BY created_at DESC`
+            );
 
-router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => {
-    try{
+            const reactionsRes = await pool.query(
+            `SELECT milestone_id, user_id FROM milestone_reactions WHERE reaction_type = $1`,
+            [REACTION_TYPE]
+            );
 
-        const milestoneId = req.params.id;
-        const userId = req.user?.userId;
-        
+            const countByMilestone = new Map<number, number>();
+            const likedByCurrentUser = new Set<number>();
 
-        if (!userId) {
-            res.status(401).json('Error user not found')
-            return
+            for (const row of reactionsRes.rows) {
+            const currentCount = countByMilestone.get(row.milestone_id) ?? 0;
+            countByMilestone.set(row.milestone_id, currentCount + 1);
+
+            if (Number(row.user_id) === Number(userId)) {
+                likedByCurrentUser.add(row.milestone_id);
+            }
+            }
+
+            const milestonesWithReactions = milestonesRes.rows.map((milestone) => ({
+            ...milestone,
+            reaction_count: countByMilestone.get(milestone.id) ?? 0,
+            liked_by_me: likedByCurrentUser.has(milestone.id),
+            }));
+
+            res.status(200).json({
+            milestones: milestonesWithReactions,
+            });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ error: 'Failed to fetch milestones' });
         }
+        });
 
-        const queryTxt = 
-        `
-        INSERT INTO milestone_reactions (milestone_id, user_id, reaction_type)
-        VALUES ($1, $2, 'clap')
-        ON CONFLICT (milestone_id, user_id) DO NOTHING
-        RETURNING *
-        `
-
-        const values = [milestoneId, userId];
-
-        const result = await pool.query(queryTxt, values);
-
-        // If reaction already exists
-        if (result.rows.length === 0) {
-        res.status(200).json({ message: 'Reaction already exists', added: false });
-        return;
-        }
-
-        res.status(201).json({ reaction: result.rows[0], added: true });
-    } catch(err) {
-        console.log(err)
-        res.status(500).json({error: 'Failed to add reaction'})
-    }
-})
-
-    router.delete('/milestones/:id/reactions', authenticateToken, async (req, res) => {
+        router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => {
         try {
             const milestoneId = req.params.id;
             const userId = req.user?.userId;
-            
 
-                    if (!userId) {
-                        res.status(401).json('Error user not found')
-                        return
-                    }
+            if (!userId) {
+            res.status(401).json('Error user not found');
+            return;
+            }
+
+            const queryTxt = `
+            INSERT INTO milestone_reactions (milestone_id, user_id, reaction_type)
+            VALUES ($1, $2, 'clap')
+            ON CONFLICT (milestone_id, user_id, reaction_type) DO NOTHING
+            RETURNING *
+            `;
+
+            const values = [milestoneId, userId];
+
+            const result = await pool.query(queryTxt, values);
+
+            // If reaction already exists
+            if (result.rows.length === 0) {
+            res.status(200).json({ message: 'Reaction already exists', added: false });
+            return;
+            }
+
+            res.status(201).json({ reaction: result.rows[0], added: true });
+        } catch (err) {
+            console.log(err);
+            res.status(500).json({ error: 'Failed to add reaction' });
+        }
+        });
+
+        router.delete('/milestones/:id/reactions', authenticateToken, async (req, res) => {
+        try {
+            const milestoneId = req.params.id;
+            const userId = req.user?.userId;
+
+            if (!userId) {
+            res.status(401).json('Error user not found');
+            return;
+            }
 
             const queryTxt = `
             DELETE FROM milestone_reactions
@@ -291,22 +293,20 @@ router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => 
 
             const values = [milestoneId, userId];
 
-            const result = await pool.query(queryTxt, values)
+            const result = await pool.query(queryTxt, values);
 
             if (result.rowCount === 0) {
-                res.status(404).json({ message: 'Reaction not found' });
-                return;
-                }
+            res.status(404).json({ message: 'Reaction not found' });
+            return;
+            }
 
-                res.status(200).json({ message: 'Reaction removed' });
-
-        } catch(err) {
-            console.log(err)
-            res.status(500).json({error: 'Failed to remove reaction'})
+            res.status(200).json({ message: 'Reaction removed' });
+        } catch (err) {
+            console.log(err);
+            res.status(500).json({ error: 'Failed to remove reaction' });
         }
-    })
-
-    router.get('/milestones')
+        });
+   
 
 export default router;
 
