@@ -110,34 +110,34 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
     }
 })
 
-router.get('/milestones', authenticateToken, async (req, res) => {  
-    try{
-        const userId = req.user?.userId;
-        
-        if (!userId) {
-            res.status(401).json('Error user not found')
-            return
-        }
+router.get('/milestones', authenticateToken, async (req, res) => {
+  try {
+            const userId = req.user?.userId;
 
-        const usersData = await pool.query(`
-            SELECT id, username, totalstreak 
-            FROM users
-            `)
-            
-        const groupsData = await pool.query(`
+                if (!userId) {
+                res.status(401).json('Error user not found');
+                return;
+                }
+
+                const usersData = await pool.query(`
+                SELECT id, username, totalstreak
+                FROM users
+                `);
+
+                const groupsData = await pool.query(`
                 SELECT * FROM community_groups
                 JOIN group_members ON community_groups.id = group_members.group_id
-                `)
-                
-                const getStreakMilestones = async () => {
-                    for (const user of usersData.rows) {
-                        const usersStreaks: number[] = [];
+                `);
 
-                        for (const milestone of STREAK_MILESTONES) {
-                        if (Number(user.totalstreak) >= milestone) {
-                            usersStreaks.push(milestone);
-                        }
-                        }
+                const getStreakMilestones = async () => {
+                for (const user of usersData.rows) {
+                    const usersStreaks: number[] = [];
+
+                    for (const milestone of STREAK_MILESTONES) {
+                    if (Number(user.totalstreak) >= milestone) {
+                        usersStreaks.push(milestone);
+                    }
+                    }
 
                         if (usersStreaks.length > 0) {
                         const max = Math.max(...usersStreaks);
@@ -158,82 +158,105 @@ router.get('/milestones', authenticateToken, async (req, res) => {
 
                         await pool.query(queryTxt, values);
                         }
-                    }
+                  }
                 };
 
                 const getJoinedLog: any = async () => {
-                    const today = new Date().toLocaleDateString('en-CA');
-                    
-                   
-                    for (const data of groupsData.rows) {
-                         if (data.joined_at && new Date(data.joined_at).toLocaleDateString('en-CA') === today) {
-                            const curUserId = data.user_id;
+                const today = new Date().toLocaleDateString('en-CA');
 
-                            for (const user of usersData.rows) {
-                                if (user.id === curUserId) {
-                                
-                                    const queryTxt = `
-                                        INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
-                                        VALUES ($1, $2, $3, $4)
-                                        ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
-                                        RETURNING *
-                                    `;
+                for (const data of groupsData.rows) {
+                    if (
+                    data.joined_at &&
+                    new Date(data.joined_at).toLocaleDateString('en-CA') === today
+                    ) {
+                    const curUserId = data.user_id;
 
-                                    const values = [
-                                        user.id,
-                                        'group_join',
-                                        data.group_title,
-                                        `${user.username} has joined ${data.group_title}`,
-                                    ];
+                    for (const user of usersData.rows) {
+                        if (user.id === curUserId) {
+                            const queryTxt = `
+                                INSERT INTO community_milestones (user_id, milestone_type, milestone_value, message)
+                                VALUES ($1, $2, $3, $4)
+                                ON CONFLICT (user_id, milestone_type, milestone_value) DO NOTHING
+                                RETURNING *
+                            `;
 
-                                    await pool.query(queryTxt, values)
-                                }
+                            const values = [
+                                user.id,
+                                'group_join',
+                                data.group_title,
+                                `${user.username} has joined ${data.group_title}`,
+                            ];
+
+                            await pool.query(queryTxt, values);
                             }
-                        } 
+                        }
                     }
                 }
-
-                const getReactionsLog: any = () => {
-
-                } 
+                };
 
                 await getStreakMilestones();
-                await getJoinedLog()
+                await getJoinedLog();
 
-                const result = await pool.query(`SELECT * FROM community_milestones ORDER BY created_at DESC`)
-    
-        res.status(200).json({
-            milestones: result.rows
-        })
+                const REACTION_TYPE = 'clap';
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to fetch milestones' })
-    }
-})
+                const milestonesRes = await pool.query(
+                `SELECT * FROM community_milestones ORDER BY created_at DESC`
+                );
+
+                const reactionsRes = await pool.query(
+                `SELECT milestone_id, user_id FROM milestone_reactions WHERE reaction_type = $1`,
+                [REACTION_TYPE]
+                );
+
+                const countByMilestone = new Map<number, number>();
+                const likedByCurrentUser = new Set<number>();
+
+                for (const row of reactionsRes.rows) {
+                const currentCount = countByMilestone.get(row.milestone_id) ?? 0;
+                countByMilestone.set(row.milestone_id, currentCount + 1);
+
+                if (Number(row.user_id) === Number(userId)) {
+                    likedByCurrentUser.add(row.milestone_id);
+                }
+                }
+
+                const milestonesWithReactions = milestonesRes.rows.map((milestone) => ({
+                ...milestone,
+                reaction_count: countByMilestone.get(milestone.id) ?? 0,
+                liked_by_me: likedByCurrentUser.has(milestone.id),
+                }));
+
+                res.status(200).json({
+                milestones: milestonesWithReactions,
+                });
+
+                } catch (err) {
+                    console.error(err);
+                    res.status(500).json({ error: 'Failed to fetch milestones' });
+                }
+});
 
 router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => {
     try{
 
         const milestoneId = req.params.id;
         const userId = req.user?.userId;
+        
 
         if (!userId) {
             res.status(401).json('Error user not found')
             return
         }
 
-        const {reactionType} = req.body;
-
         const queryTxt = 
         `
         INSERT INTO milestone_reactions (milestone_id, user_id, reaction_type)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (milestone_id, user_id, reaction_type) DO NOTHING
+        VALUES ($1, $2, 'clap')
+        ON CONFLICT (milestone_id, user_id) DO NOTHING
         RETURNING *
         `
 
-        const values = [milestoneId, userId, reactionType];
+        const values = [milestoneId, userId];
 
         const result = await pool.query(queryTxt, values);
 
@@ -249,6 +272,41 @@ router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => 
         res.status(500).json({error: 'Failed to add reaction'})
     }
 })
+
+    router.delete('/milestones/:id/reactions', authenticateToken, async (req, res) => {
+        try {
+            const milestoneId = req.params.id;
+            const userId = req.user?.userId;
+            
+
+                    if (!userId) {
+                        res.status(401).json('Error user not found')
+                        return
+                    }
+
+            const queryTxt = `
+            DELETE FROM milestone_reactions
+            WHERE milestone_id = $1 AND user_id = $2 AND reaction_type = 'clap'
+            `;
+
+            const values = [milestoneId, userId];
+
+            const result = await pool.query(queryTxt, values)
+
+            if (result.rowCount === 0) {
+                res.status(404).json({ message: 'Reaction not found' });
+                return;
+                }
+
+                res.status(200).json({ message: 'Reaction removed' });
+
+        } catch(err) {
+            console.log(err)
+            res.status(500).json({error: 'Failed to remove reaction'})
+        }
+    })
+
+    router.get('/milestones')
 
 export default router;
 
