@@ -112,7 +112,7 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
     }
 })
 
-        router.get('/milestones', authenticateToken, async (req, res) => {
+    router.get('/milestones', authenticateToken, async (req, res) => {
         try {
             const userId = req.user?.userId;
 
@@ -242,7 +242,7 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
         }
         });
 
-        router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => {
+    router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => {
         try {
             const milestoneId = req.params.id;
             const userId = req.user?.userId;
@@ -276,7 +276,7 @@ router.delete('/:groupId', authenticateToken, async(req, res) => {
         }
         });
 
-        router.delete('/milestones/:id/reactions', authenticateToken, async (req, res) => {
+    router.delete('/milestones/:id/reactions', authenticateToken, async (req, res) => {
         try {
             const milestoneId = req.params.id;
             const userId = req.user?.userId;
