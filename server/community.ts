@@ -237,6 +237,7 @@ router.post('/milestones/:id/reactions', authenticateToken, async (req, res) => 
 
         const result = await pool.query(queryTxt, values);
 
+        // If reaction already exists
         if (result.rows.length === 0) {
         res.status(200).json({ message: 'Reaction already exists', added: false });
         return;
