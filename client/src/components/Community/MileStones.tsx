@@ -50,6 +50,7 @@ export default function MileStones() {
 
         console.log(milestonesList)
 
+        /*
         return (
                 <>
         <div>
@@ -77,5 +78,6 @@ export default function MileStones() {
                 </div>
         </div>
                 </>
-            )
+        )
+        */
 }
