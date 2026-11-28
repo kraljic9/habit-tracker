@@ -75,49 +75,52 @@ export default function CommunityGroups() {
     }
 
     return (
-        <div className="rounded-2xl border border-slate-700/70 bg-slate-800/90 p-5 text-white shadow-lg">
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight text-slate-100">Community groups</h3>
-                <p className="text-sm text-slate-400">Join a community to participate in group challenges</p>
-            </div>
+       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-md text-white">
+  <div className="mb-4">
+    <h3 className="text-sm font-medium text-slate-400">Community groups</h3>
+    <p className="mt-1 text-xs text-slate-400">
+      Join a community to participate in group challenges
+    </p>
+  </div>
 
-            <div className="space-y-3">
-                {groupData?.groups?.map((group: any) => (
-                    <div
-                        key={group.group_title}
-                        className={`${categoryGroups[group.slug].containerStyle} flex items-center justify-between rounded-xl px-4 py-3 shadow-sm`}
-                    >
-                        <div>
-                            <h3 className="text-sm font-semibold tracking-wide">{group.group_title}</h3>
-                            <p className="mt-0.5 text-xs font-medium opacity-90">
-                                {group.members_count}{' '}
-                                <span>{group.members_count=== 1 ? 'member' : 'members'}</span>
-                            </p>
-                        </div>
-
-                    { !group.is_member ? (
-                        <button
-                            type="button"
-                            className="cursor-pointer rounded-lg bg-slate-900/35 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-xs transition hover:bg-slate-900/55"
-                            id={group.id}
-                            onClick={() => addMember(group.id)}
-                        >
-                            Join
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            className="cursor-pointer rounded-lg bg-slate-900/35 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-xs transition hover:bg-slate-900/55"
-                            id={group.id}
-                            onClick={() => removeMember(group.id)}
-                        >
-                            Leave
-                        </button>
-                    )
-                    }
-                    </div>
-                ))}
-            </div>
+  <div className="space-y-3">
+    {groupData?.groups?.map((group: any) => (
+      <div
+        key={group.group_title}
+        className={`${categoryGroups[group.slug].containerStyle} flex items-center justify-between rounded-xl px-4 py-3 shadow-sm`}
+      >
+        <div>
+          <h3 className="text-sm font-semibold tracking-wide">
+            {group.group_title}
+          </h3>
+          <p className="mt-0.5 text-xs font-medium opacity-90">
+            {group.members_count}{" "}
+            <span>{group.members_count === 1 ? "member" : "members"}</span>
+          </p>
         </div>
+
+        {!group.is_member ? (
+          <button
+            type="button"
+            className="cursor-pointer rounded-lg bg-slate-950/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-xs transition hover:bg-slate-950/60"
+            id={group.id}
+            onClick={() => addMember(group.id)}
+          >
+            Join
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="cursor-pointer rounded-lg bg-slate-950/40 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-xs transition hover:bg-slate-950/60"
+            id={group.id}
+            onClick={() => removeMember(group.id)}
+          >
+            Leave
+          </button>
+        )}
+      </div>
+    ))}
+  </div>
+</div>
     );
 }
