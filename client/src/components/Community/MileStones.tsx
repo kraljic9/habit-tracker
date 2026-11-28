@@ -50,14 +50,13 @@ export default function MileStones() {
 
         console.log(milestonesList)
 
-        /*
         return (
                 <>
         <div>
                 <h3>Milestone feed</h3>
 
                 <div>
-                        {milestonesList?.map((milestone : any) => (
+                        {milestonesList?.milestones.map((milestone : any) => (
                                 <div key={milestone.id}>
                                         <div></div>
 
@@ -79,5 +78,5 @@ export default function MileStones() {
         </div>
                 </>
         )
-        */
+
 }
