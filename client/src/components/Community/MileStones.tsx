@@ -30,7 +30,32 @@ export default function MileStones() {
 
         async function addReaction (id: number) {
                 try{
-                        await axios.post(`/milestones/${id}/reactions`)
+
+                        const token = localStorage.getItem('token');
+
+
+                        await axios.post(
+                                `http://localhost:5000/api/community/milestones/${id}/reactions`,
+                                {},
+                                {
+                                        headers: {
+                                                Authorization: `Bearer ${token}`,
+                                        },
+                                    }
+                                );
+
+                        setMilestonesList((prev : any) => ({
+                                ...prev,
+                                milestones: prev.milestones.map((milestone : any) => (
+                                        milestone.id === id ?
+                                        {
+                                                ...milestone,
+                                                reaction_count: milestone.reaction_count + 1,
+                                                liked_by_me: true
+                                        } :
+                                        milestone
+                                ))
+                        }))
                 } 
                 catch(err) {
                         console.log('Error accured while fetching milestones data')
@@ -40,7 +65,28 @@ export default function MileStones() {
 
         async function removeReaction (id: number) {
                 try{
-                        await axios.post(`/milestones/${id}/reactions`)
+
+                        const token = localStorage.getItem('token');
+
+
+                        await axios.delete(`http://localhost:5000/api/community/milestones/${id}/reactions`, {
+                                headers: {
+                                        Authorization: `Bearer ${token}`,
+                                }
+                        })
+
+                        setMilestonesList((prev : any) => ({
+                                ...prev,
+                                milestones: prev.milestones.map((milestone : any) => (
+                                        milestone.id === id ?
+                                        {
+                                                ...milestone,
+                                                reaction_count: milestone.reaction_count - 1,
+                                                liked_by_me: false
+                                        } :
+                                        milestone
+                                ))
+                        }))
                 } 
                 catch(err) {
                         console.log('Error accured while fetching milestones data')
