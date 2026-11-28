@@ -2,127 +2,143 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 
 export default function MileStones() {
-        
-        const [milestonesList, setMilestonesList] = useState<any>(null);
-        
-        useEffect(() => {
-                const fetchMilestoneData = async () => {
-                        try{
-                        
-                        const token = localStorage.getItem('token');
+  const [milestonesList, setMilestonesList] = useState<any>(null);
 
-                        const response = await axios.get('http://localhost:5000/api/community/milestones', {
-                                headers: {
-                                        Authorization: `Bearer ${token}`
-                                }
-                        })
-                        
-                        setMilestonesList(response.data)
+  useEffect(() => {
+    const fetchMilestoneData = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-                        } catch(err) {
-                                console.log('Error accured while fetching milestones data')
-                                console.log(err)
-                        }
-                }
+        const response = await axios.get(
+          "http://localhost:5000/api/community/milestones",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-                fetchMilestoneData();
-        }, [])
+        setMilestonesList(response.data);
+      } catch (err) {
+        console.log("Error accured while fetching milestones data");
+        console.log(err);
+      }
+    };
 
-        async function addReaction (id: number) {
-                try{
+    fetchMilestoneData();
+  }, []);
 
-                        const token = localStorage.getItem('token');
+  async function addReaction(id: number) {
+    try {
+      const token = localStorage.getItem("token");
 
-
-                        await axios.post(
-                                `http://localhost:5000/api/community/milestones/${id}/reactions`,
-                                {},
-                                {
-                                        headers: {
-                                                Authorization: `Bearer ${token}`,
-                                        },
-                                    }
-                                );
-
-                        setMilestonesList((prev : any) => ({
-                                ...prev,
-                                milestones: prev.milestones.map((milestone : any) => (
-                                        milestone.id === id ?
-                                        {
-                                                ...milestone,
-                                                reaction_count: milestone.reaction_count + 1,
-                                                liked_by_me: true
-                                        } :
-                                        milestone
-                                ))
-                        }))
-                } 
-                catch(err) {
-                        console.log('Error accured while fetching milestones data')
-                        console.log(err)
-                }
+      await axios.post(
+        `http://localhost:5000/api/community/milestones/${id}/reactions`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        async function removeReaction (id: number) {
-                try{
+      setMilestonesList((prev: any) => ({
+        ...prev,
+        milestones: prev.milestones.map((milestone: any) =>
+          milestone.id === id
+            ? {
+                ...milestone,
+                reaction_count: milestone.reaction_count + 1,
+                liked_by_me: true,
+              }
+            : milestone
+        ),
+      }));
+    } catch (err) {
+      console.log("Error accured while fetching milestones data");
+      console.log(err);
+    }
+  }
 
-                        const token = localStorage.getItem('token');
+  async function removeReaction(id: number) {
+    try {
+      const token = localStorage.getItem("token");
 
-
-                        await axios.delete(`http://localhost:5000/api/community/milestones/${id}/reactions`, {
-                                headers: {
-                                        Authorization: `Bearer ${token}`,
-                                }
-                        })
-
-                        setMilestonesList((prev : any) => ({
-                                ...prev,
-                                milestones: prev.milestones.map((milestone : any) => (
-                                        milestone.id === id ?
-                                        {
-                                                ...milestone,
-                                                reaction_count: milestone.reaction_count - 1,
-                                                liked_by_me: false
-                                        } :
-                                        milestone
-                                ))
-                        }))
-                } 
-                catch(err) {
-                        console.log('Error accured while fetching milestones data')
-                        console.log(err)
-                }
+      await axios.delete(
+        `http://localhost:5000/api/community/milestones/${id}/reactions`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
 
-        console.log(milestonesList)
+      setMilestonesList((prev: any) => ({
+        ...prev,
+        milestones: prev.milestones.map((milestone: any) =>
+          milestone.id === id
+            ? {
+                ...milestone,
+                reaction_count: milestone.reaction_count - 1,
+                liked_by_me: false,
+              }
+            : milestone
+        ),
+      }));
+    } catch (err) {
+      console.log("Error accured while fetching milestones data");
+      console.log(err);
+    }
+  }
 
-        return (
-                <>
-        <div>
-                <h3>Milestone feed</h3>
+  console.log(milestonesList);
 
-                <div>
-                        {milestonesList?.milestones.map((milestone : any) => (
-                                <div key={milestone.id}>
-                                        <div></div>
+  return (
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-md text-white">
+      <h3 className="mb-4 text-sm font-medium text-slate-400">
+        Milestone feed
+      </h3>
 
-                                        <div>
-                                          <p>{milestone.message}</p>
+      <div className="space-y-4">
+        {milestonesList?.milestones?.map((milestone: any) => (
+          <div
+            key={milestone.id}
+            className="flex items-start gap-3.5 border-b border-slate-800 pb-4 last:border-b-0 last:pb-0"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-950 text-sm font-semibold text-sky-400">
+              {milestone.message?.[0]?.toUpperCase() ?? "M"}
+            </div>
 
-                                          <div>
-                                                {!milestone.liked_by_me 
-                                                ? 
-                                                <button onClick={() => addReaction(milestone.id)}>👏{milestone.reaction_count}</button> 
-                                                : 
-                                                <button onClick={() => removeReaction(milestone.id)}>👏{milestone.reaction_count}</button>       
-                                        }
-                                          </div>
-                                        </div>
-                                </div>
-                        ))}
-                </div>
-        </div>
-                </>
-        )
+            <div className="min-w-0 flex-1">
+              <p className="text-sm leading-snug text-slate-200">
+                {milestone.message}
+              </p>
 
+              <div className="mt-2.5 flex items-center gap-2">
+                {!milestone.liked_by_me ? (
+                  <button
+                    type="button"
+                    onClick={() => addReaction(milestone.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:border-slate-700 hover:bg-slate-800"
+                  >
+                    <span>👏</span>
+                    <span>{milestone.reaction_count}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => removeReaction(milestone.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/50 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 transition hover:bg-amber-500/25"
+                  >
+                    <span>👏</span>
+                    <span>{milestone.reaction_count}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
